@@ -114,7 +114,7 @@ http://127.0.0.1:8000/static/index.html
 
 ---
 
-## 📡 API Endpoint
+##  API Endpoint
 
 | Method | Endpoint          | Description                         |
 | ------ | ----------------- | ----------------------------------- |
@@ -122,7 +122,7 @@ http://127.0.0.1:8000/static/index.html
 
 ---
 
-## 📦 Dependencies
+##  Dependencies
 
 * `fastapi`
 * `uvicorn`
@@ -143,6 +143,7 @@ pip install fastapi uvicorn requests python-dotenv pydantic
 This repo documents my **daily progress** of building an AI Voice Agent:
 
 
+✔ Day 19 – Streaming LLM responses
 ✔ Day 20 – WebSocket-based streaming
 
 
@@ -161,8 +162,4 @@ To build and showcase an **end-to-end AI-powered Voice Agent** that can:
 
 
 
----
 
-👉 Perfect for your **GitHub repo** documenting your 30 Days AI Voice Challenge.
-
-Do you also want me to make a **shorter LinkedIn-style README summary** (like a project highlight) that you can share as a post?
