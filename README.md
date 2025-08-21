@@ -143,7 +143,8 @@ pip install fastapi uvicorn requests python-dotenv pydantic
 This repo documents my **daily progress** of building an AI Voice Agent:
 
 
-✔ Day 19 – Streaming LLM responses
+✔ Day 19 – Streaming LLM responses   
+
 ✔ Day 20 – WebSocket-based streaming
 
 
