@@ -1,4 +1,3 @@
-# main.py
 import logging
 from pathlib import Path
 from uuid import uuid4
@@ -20,31 +19,25 @@ from typing import Type
 import os
 from dotenv import load_dotenv
 import asyncio
-from concurrent.futures import TimeoutError
-import json
-from services.llm_service import LLMService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(_name_)
 
 # Load environment variables
 load_dotenv()
 aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY")
 if not aai.settings.api_key:
+    logger.error("ASSEMBLYAI_API_KEY not found in .env file.")
     raise ValueError("ASSEMBLYAI_API_KEY is missing.")
 
 # Initialize FastAPI app
 app = FastAPI(title="AI Voice Agent - Streaming", version="1.0.0")
 
 # Base directory and uploads folder
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(_file_).resolve().parent
 UPLOADS_DIR = BASE_DIR / "Uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
-
-# Global WebSocket connection storage
-active_websockets = {}
-
 
 # WebSocket Audio Streaming with AssemblyAI Transcription
 @app.websocket("/ws/audio")
@@ -54,13 +47,6 @@ async def websocket_audio(websocket: WebSocket):
     file_id = uuid4().hex
     file_path = UPLOADS_DIR / f"streamed_{file_id}.pcm"
 
-    # Store WebSocket connection for audio streaming
-    connection_id = uuid4().hex
-    active_websockets[connection_id] = websocket
-
-    # Initialize LLMService with WebSocket connection
-    llm_service = LLMService(websocket)
-
     # Initialize AssemblyAI StreamingClient
     client = StreamingClient(
         StreamingClientOptions(
@@ -69,71 +55,27 @@ async def websocket_audio(websocket: WebSocket):
         )
     )
 
-    # Get the event loop for WebSocket communication
-    loop = asyncio.get_event_loop()
+    # Create a queue for transcriptions
+    transcription_queue = asyncio.Queue()
 
     # Define event handlers
-    def on_begin(_: Type[StreamingClient], event: BeginEvent):
-        try:
-            msg = {"type": "session", "message": f"Session started: {event.id}"}
-            asyncio.run_coroutine_threadsafe(
-                websocket.send_json(msg), loop
-            ).result(timeout=5)
-        except TimeoutError:
-            pass
-        except Exception:
-            pass
+    def on_begin(self: Type[StreamingClient], event: BeginEvent):
+        logger.info(f"Session started: {event.id}")
 
-    def on_turn(_: Type[StreamingClient], event: TurnEvent):
-        is_formatted = hasattr(event, 'turn_is_formatted') and event.turn_is_formatted
-        if event.end_of_turn:
-            try:
-                msg = {"type": "end_of_turn"}
-                asyncio.run_coroutine_threadsafe(
-                    websocket.send_json(msg), loop
-                ).result(timeout=5)
-            except TimeoutError:
-                pass
-            except Exception:
-                pass
-        if is_formatted and event.end_of_turn:
-            try:
-                msg = {"type": "transcript", "text": event.transcript}
-                asyncio.run_coroutine_threadsafe(
-                    websocket.send_json(msg), loop
-                ).result(timeout=5)
-                # Stream LLM response for final transcript
-                asyncio.run_coroutine_threadsafe(
-                    llm_service.stream_llm(event.transcript), loop
-                )
-            except TimeoutError:
-                pass
-            except Exception as e:
-                logger.error(f"Error in on_turn handler: {str(e)}")
+    def on_turn(self: Type[StreamingClient], event: TurnEvent):
+        logger.info(f"Transcript: {event.transcript} (End of turn: {event.end_of_turn})")
+        if event.transcript:
+            transcription_queue.put_nowait(event.transcript)
+        if event.end_of_turn and not event.turn_is_formatted:
+            params = StreamingParameters(sample_rate=16000, format_turns=True)
+            self.set_params(params)
 
-    def on_terminated(_: Type[StreamingClient], event: TerminationEvent):
-        try:
-            msg = {"type": "termination", "message": f"Session ended: {event.audio_duration_seconds}s processed"}
-            asyncio.run_coroutine_threadsafe(
-                websocket.send_json(msg), loop
-            ).result(timeout=5)
-        except TimeoutError:
-            pass
-        except Exception:
-            pass
+    def on_terminated(self: Type[StreamingClient], event: TerminationEvent):
+        logger.info(f"Session terminated: {event.audio_duration_seconds} seconds of audio processed")
 
-    def on_error(_: Type[StreamingClient], error: StreamingError):
-        try:
-            msg = {"type": "error", "message": str(error)}
-            asyncio.run_coroutine_threadsafe(
-                websocket.send_json(msg), loop
-            ).result(timeout=5)
-        except TimeoutError:
-            pass
-        except Exception:
-            pass
+    def on_error(self: Type[StreamingClient], error: StreamingError):
+        logger.error(f"Streaming error: {error}")
 
-    # Register event handlers
     client.on(StreamingEvents.Begin, on_begin)
     client.on(StreamingEvents.Turn, on_turn)
     client.on(StreamingEvents.Termination, on_terminated)
@@ -148,29 +90,31 @@ async def websocket_audio(websocket: WebSocket):
     )
 
     try:
+        # Save audio to file for debugging (optional)
         with open(file_path, "wb") as f:
             while True:
                 message = await websocket.receive()
                 if "bytes" in message:
                     pcm_data = message["bytes"]
-                    f.write(pcm_data)
+                    logger.debug(f"Received audio chunk of size: {len(pcm_data)} bytes")
+                    f.write(pcm_data)  # Save to file for debugging
                     client.stream(pcm_data)
                 elif message.get("text") == "EOF":
+                    logger.info("Recording finished. Closing transcription session.")
                     break
+
+                # Process queued transcriptions and send to client
+                while not transcription_queue.empty():
+                    transcript = await transcription_queue.get()
+                    await websocket.send_text(transcript)
+
     except WebSocketDisconnect:
-        pass
-    except Exception as err:
-        try:
-            await websocket.send_json({"type": "error", "message": str(err)})
-        except:
-            pass
+        logger.info("Client disconnected")
+    except Exception as e:
+        logger.error(f"WebSocket error: {str(e)}")
     finally:
-        # Clean up WebSocket connection
-        if connection_id in active_websockets:
-            del active_websockets[connection_id]
         client.disconnect(terminate=True)
         await websocket.close()
-
 
 # Health Check
 @app.get("/health")
@@ -178,14 +122,14 @@ async def health_check():
     return {
         "status": "AI Voice Agent Streaming Running!",
         "version": "1.0.0",
-        "endpoints": ["/ws/audio"],
+        "endpoints": [
+            "/ws/audio"
+        ]
     }
-
 
 # App Initialization
 app.mount("/", StaticFiles(directory=BASE_DIR / "static", html=True), name="static")
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8000)
