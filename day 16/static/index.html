@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Voice Agent - Streaming</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="wrapper">
+    <h1>AI Voice Agent - Streaming Audio</h1>
+
+    <!-- Mic Button -->
+    <div class="mic-btn" id="record-btn">
+      <span class="mic-icon">🎙️</span>
+    </div>
+
+    <!-- Status -->
+    <p id="chat-status">Press the button to start streaming</p>
+
+    <!-- Response / Transcript Output -->
+    <div id="transcripts" class="response-box"></div>
+  </div>
+
+  <script>
+    let ws, audioContext, source, processor;
+    const recordBtn = document.getElementById("record-btn");
+    const chatStatus = document.getElementById("chat-status");
+    const transcriptsDiv = document.getElementById("transcripts");
+
+    async function startRecording() {
+      try {
+        ws = new WebSocket("ws://localhost:8000/ws/audio");
+
+        ws.onopen = async () => {
+          chatStatus.textContent = "🎤 Listening... Speak now!";
+          console.log("Connected to server");
+
+          // Microphone access
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+          source = audioContext.createMediaStreamSource(stream);
+          processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+          processor.onaudioprocess = (event) => {
+            const inputData = event.inputBuffer.getChannelData(0);
+
+            // Convert float32 → int16 PCM
+            const pcmData = new Int16Array(inputData.length);
+            for (let i = 0; i < inputData.length; i++) {
+              const sample = Math.max(-1, Math.min(1, inputData[i]));
+              pcmData[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+            }
+
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(pcmData.buffer);
+            }
+          };
+
+          source.connect(processor);
+          processor.connect(audioContext.destination);
+        };
+
+        // Handle messages from server (final transcripts after turn detection)
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.type === "transcript") {
+            const p = document.createElement("p");
+            p.textContent = ` ${data.text}`;
+            transcriptsDiv.appendChild(p);
+            transcriptsDiv.scrollTop = transcriptsDiv.scrollHeight; // Auto-scroll to bottom
+          }
+        };
+
+        ws.onclose = () => {
+          chatStatus.textContent = "🔴 Streaming stopped.";
+          console.log("WebSocket closed");
+        };
+      } catch (err) {
+        console.error("Microphone error:", err);
+        chatStatus.textContent = "❌ Microphone access denied.";
+      }
+    }
+
+    function stopRecording() {
+      if (processor) {
+        processor.disconnect();
+        source.disconnect();
+        audioContext.close();
+        chatStatus.textContent = "⏹️ Stopping recording...";
+      }
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send("EOF");
+        ws.close();
+      }
+    }
+
+    // Toggle record button
+    recordBtn.addEventListener("click", () => {
+      recordBtn.classList.add("clicked");
+      setTimeout(() => recordBtn.classList.remove("clicked"), 200);
+
+      if (!recordBtn.classList.contains("recording")) {
+        startRecording();
+        recordBtn.classList.add("recording");
+      } else {
+        stopRecording();
+        recordBtn.classList.remove("recording");
+      }
+    });
+  </script>
+</body>
+</html>
