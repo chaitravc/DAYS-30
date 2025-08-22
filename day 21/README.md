@@ -1,161 +1,100 @@
 
 
-# AI Voice Agent
+### Day 21 – Streaming Audio Data to Client
 
-An interactive AI-powered voice agent that listens to user speech, processes it using advanced AI models, and responds with natural-sounding speech.
-
-This project integrates:
-
-* **Murf API** – Text-to-Speech conversion
-* **AssemblyAI API** – Speech-to-Text transcription
-* **Google Gemini API** – Natural Language Understanding & Response Generation
+This task focuses on streaming audio data from the server to the client in real-time. The audio is sent as **base64-encoded chunks** over WebSockets, accumulated into an array on the client, and acknowledgements of received data are printed in the console.
 
 ---
 
-##  Features
+#### Task Overview
 
-*  **Speech Recognition**: Converts your spoken words into text using AssemblyAI
-*  **Intelligent Response**: Processes text using Google Gemini for accurate, context-aware replies
-*  **Natural Voice Output**: Converts AI responses to speech with Murf API
-*  **FastAPI Backend**: Efficient API endpoints for real-time interaction
-*  **Interactive Frontend**: Simple HTML/CSS/JS interface for recording and playing responses
-
----
-
-##  Tech Stack
-
-* **Frontend**: HTML, CSS, JavaScript
-* **Backend**: Python (FastAPI)
-* **APIs**:
-
-  * [Murf API](https://murf.ai) – Text-to-Speech
-  * [AssemblyAI](https://www.assemblyai.com) – Speech-to-Text
-  * [Google Gemini](https://ai.google) – LLM for text processing
-* **Others**: Fetch API for frontend-backend communication
-
+* Stream base64 audio data from the server to the client
+* Accumulate audio chunks in an array for further handling
+* Print acknowledgement messages in the client console
+* No need to play the audio directly in the `<audio>` element
 
 ---
 
-##  Project Structure
+#### How It Works
 
-```
-voice/
-│── .venv/                       # Virtual environment 
-│── audio_outputs/               # Stores generated AI voice audio files
-│── static/                      # Frontend static files
-│   ├── index.html               # Main user interface
-│   ├── index.js                 # Handles frontend logic & API calls
-│   ├── style.css                # UI styling
-│   └── WhatsApp Image ....jpeg  # Screenshot/image assets
-│── uploads/                     # Stores uploaded audio files from user
-│── .env                         # Environment variables (API keys, config)
-│── main.py                      # FastAPI backend
-│── README.md                    # Project documentation
-│── requirements.txt             # Python dependencies
-```
-
-
-
+1. Server generates audio output (base64-encoded).
+2. Audio data is streamed chunk by chunk over WebSockets.
+3. Client receives each audio chunk and appends it to an array.
+4. Client console prints acknowledgement for each received audio chunk.
 
 ---
 
+#### Tech Stack
 
+* **Backend** – Python (FastAPI)
+* **Streaming** – WebSockets
+* **Speech-to-Text** – AssemblyAI API
+* **LLM** – Google Gemini API
+* **Text-to-Speech** – Murf AI
+* **Runtime** – Uvicorn
 
-##  How to Run the AI Voice Agent
+---
 
-###  Clone the Repository
+#### Setup Instructions
+
+1. **Clone Repository**
 
 ```bash
-git clone https://github.com/yourusername/ai-voice-agent.git
-cd ai-voice-agent
+git clone https://github.com/chaitravc/day21.git
+cd day21
 ```
 
----
-
-###  Install Dependencies
+2. **Install Dependencies**
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-###  Set Up Environment Variables
-
-Create a `.env` file in the **root** folder and add:
+3. **Add Environment Variables**
+   Create a `.env` file in the root directory:
 
 ```env
-MURF_API_KEY=your_murf_api_key_here
-ASSEMBLYAI_API_KEY=your_assemblyai_api_key_here
-GOOGLE_API_KEY=your_gemini_api_key_here
+ASSEMBLYAI_API_KEY=your_assemblyai_api_key
+GOOGLE_API_KEY=your_gemini_api_key
+MURF_API_KEY=your_murf_api_key
 ```
 
----
-
-###  Run the Backend Server
+4. **Run Server**
 
 ```bash
 uvicorn main:app --reload
 ```
 
-Visit:
+---
+
+#### Example Output
+
+When you run the service, the terminal prints acknowledgements of received audio data:
 
 ```
-http://127.0.0.1:8000
+Received audio chunk [base64 data]
+Acknowledgement: Audio data received successfully
 ```
 
 ---
 
-###  Open the Frontend
+#### Dependencies
 
-Open in your browser:
-
-```
-http://127.0.0.1:8000/static/index.html
-```
----
-
-##  How It Works
-
-1. User clicks **Record** → speaks into microphone
-2. Audio is sent to **AssemblyAI** → returns transcribed text
-3. Text is sent to **Google Gemini** → returns AI-generated reply
-4. Reply is sent to **Murf API** → returns audio file of the response
-5. Audio is played in the browser
+* fastapi
+* uvicorn
+* requests
+* websockets
+* google-generativeai
+* python-dotenv
 
 ---
 
-##  API Endpoints
+#### Notes
 
-| Method | Endpoint          | Description                          |
-| ------ | ----------------- | ------------------------------------ |
-| POST   | `/api/agent/chat` | Send audio and get AI voice response |
+This task demonstrates **real-time audio streaming integration** using WebSockets. The audio is received and acknowledged on the client, while the frontend remains unchanged.
 
----
+## Output
+<img width="1920" height="1080" alt="Screenshot 2025-08-22 150448" src="https://github.com/user-attachments/assets/bf23ee7c-0b50-4290-91cd-d8567210eb41" />
 
-##  Dependencies
-
-* `fastapi`
-* `uvicorn`
-* `requests`
-* `python-dotenv`
-* `pydantic`
-
-Install all at once:
-
-```bash
-pip install fastapi uvicorn requests python-dotenv pydantic
-```
-
-
-
-## Test the Voice Agent
-
-Open the frontend in your browser.
-
-Click Record → Speak → Let AI respond.
-
-If API keys are valid, you’ll hear the AI-generated voice.
-
-
-
+<img width="1920" height="1020" alt="Screenshot 2025-08-22 150504" src="https://github.com/user-attachments/assets/32688d67-91d9-4657-8988-98b707f138c8" />
+<img width="1920" height="1020" alt="Screenshot 2025-08-22 150527" src="https://github.com/user-attachments/assets/df7f6ccb-2bb1-4ad2-8e3c-6141b7090ded" />
