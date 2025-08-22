@@ -9,180 +9,64 @@
 <body>
   <div class="wrapper">
     <h1>AI Voice Agent - Streaming Audio</h1>
-
-    <!-- Mic Button -->
     <div class="mic-btn" id="record-btn">
       <span class="mic-icon">🎙️</span>
     </div>
-
-    <!-- Status -->
     <p id="chat-status">Press the button to start streaming</p>
-
-    <!-- Response / Transcript Output -->
-    <div id="transcripts" class="response-box"></div>
-
-    <!-- Audio Status Display -->
-    <div id="audio-status" class="audio-status">
-      <p>Audio chunks received: <span id="chunk-count">0</span></p>
-      <p>Total audio data: <span id="audio-size">0</span> KB</p>
-    </div>
+    <div id="transcription-output" style="margin-top: 20px; font-size: 18px; color: #333;"></div>
   </div>
-
   <script>
     let ws, audioContext, source, processor;
-    let audioChunks = [];
-    let totalChunks = 0;
-    let totalAudioSize = 0;
-
     const recordBtn = document.getElementById("record-btn");
     const chatStatus = document.getElementById("chat-status");
-    const transcriptsDiv = document.getElementById("transcripts");
-    const chunkCountSpan = document.getElementById("chunk-count");
-    const audioSizeSpan = document.getElementById("audio-size");
-
-    // Function to update audio statistics
-    function updateAudioStats() {
-      chunkCountSpan.textContent = audioChunks.length;
-      audioSizeSpan.textContent = (totalAudioSize / 1024).toFixed(2);
-    }
-
-    // Function to estimate base64 audio size
-    function estimateAudioSize(base64String) {
-      // Base64 encoding adds ~33% overhead, so we can estimate original size
-      return (base64String.length * 3) / 4;
-    }
+    const transcriptionOutput = document.getElementById("transcription-output");
 
     async function startRecording() {
       try {
-        // Reset audio data
-        audioChunks = [];
-        totalAudioSize = 0;
-        updateAudioStats();
-
         ws = new WebSocket("ws://localhost:8000/ws/audio");
-
         ws.onopen = async () => {
-          chatStatus.textContent = "🎤 Listening... Speak now!";
+          chatStatus.textContent = "Streaming started...";
           console.log("Connected to server");
+          transcriptionOutput.textContent = ""; // Clear previous transcription
 
-          // Microphone access
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
           source = audioContext.createMediaStreamSource(stream);
-          processor = audioContext.createScriptProcessor(4096, 1, 1);
+          processor = audioContext.createScriptProcessor(4096, 1, 1); // Mono, 4096 buffer size
 
           processor.onaudioprocess = (event) => {
             const inputData = event.inputBuffer.getChannelData(0);
-
-            // Convert float32 → int16 PCM
             const pcmData = new Int16Array(inputData.length);
             for (let i = 0; i < inputData.length; i++) {
               const sample = Math.max(-1, Math.min(1, inputData[i]));
               pcmData[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
             }
-
             if (ws.readyState === WebSocket.OPEN) {
+              console.log(Sending PCM chunk of size: ${pcmData.buffer.byteLength} bytes);
               ws.send(pcmData.buffer);
             }
           };
 
           source.connect(processor);
           processor.connect(audioContext.destination);
-        };
 
-        // Handle messages from server
-        ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-
-          switch(data.type) {
-            case "transcript":
-              const p = document.createElement("p");
-              p.textContent = ` ${data.text}`;
-              transcriptsDiv.appendChild(p);
-              transcriptsDiv.scrollTop = transcriptsDiv.scrollHeight;
-              break;
-
-            case "llm_response_start":
-              console.log("🤖 LLM Response started");
-              chatStatus.textContent = "🤖 Generating response...";
-              break;
-
-            case "audio_chunk":
-              // Receive and acknowledge audio chunk
-              const chunkSize = estimateAudioSize(data.chunk);
-              audioChunks.push(data.chunk);
-              totalAudioSize += chunkSize;
-
-              console.log(`🔊 Audio chunk ${data.chunk_number} received:`, {
-                chunkNumber: data.chunk_number,
-                chunkSize: `${(chunkSize / 1024).toFixed(2)} KB`,
-                base64Length: data.chunk.length,
-                totalChunks: audioChunks.length,
-                totalSize: `${(totalAudioSize / 1024).toFixed(2)} KB`
-              });
-
-              updateAudioStats();
-              chatStatus.textContent = `🔊 Receiving audio... (${audioChunks.length} chunks)`;
-              break;
-
-            case "audio_complete":
-              console.log("✅ Audio streaming completed:", {
-                totalChunks: data.total_chunks,
-                receivedChunks: audioChunks.length,
-                totalSize: `${(totalAudioSize / 1024).toFixed(2)} KB`,
-                message: data.message
-              });
-
-              chatStatus.textContent = `✅ Audio complete! (${audioChunks.length} chunks received)`;
-
-              // Log final audio data summary
-              console.log("📊 Final Audio Data Summary:", {
-                chunksArray: audioChunks.map((chunk, index) => ({
-                  index: index + 1,
-                  size: `${(estimateAudioSize(chunk) / 1024).toFixed(2)} KB`,
-                  preview: chunk.substring(0, 20) + "..."
-                })),
-                totalSize: `${(totalAudioSize / 1024).toFixed(2)} KB`,
-                averageChunkSize: `${(totalAudioSize / audioChunks.length / 1024).toFixed(2)} KB`
-              });
-              break;
-
-            case "session":
-              console.log("📡 Session:", data.message);
-              break;
-
-            case "end_of_turn":
-              console.log("🔄 End of turn detected");
-              break;
-
-            case "termination":
-              console.log("🛑 Session terminated:", data.message);
-              break;
-
-            case "error":
-              console.error("❌ Error:", data.message);
-              chatStatus.textContent = `❌ Error: ${data.message}`;
-              break;
-
-            default:
-              console.log("📝 Unknown message type:", data);
-          }
+          // Handle incoming messages (transcriptions)
+          ws.onmessage = (event) => {
+            const transcript = event.data;
+            if (transcript) {
+              transcriptionOutput.textContent += transcript + " ";
+              transcriptionOutput.scrollTop = transcriptionOutput.scrollHeight; // Auto-scroll
+            }
+          };
         };
 
         ws.onclose = () => {
-          chatStatus.textContent = "🔴 Streaming stopped.";
+          chatStatus.textContent = "Streaming stopped.";
           console.log("WebSocket closed");
-          console.log("Final audio data accumulated:", audioChunks.length, "chunks");
         };
-
-        ws.onerror = (error) => {
-          console.error("WebSocket error:", error);
-          chatStatus.textContent = "❌ Connection error.";
-        };
-
       } catch (err) {
         console.error("Microphone error:", err);
-        chatStatus.textContent = "❌ Microphone access denied.";
+        chatStatus.textContent = "Microphone access denied.";
       }
     }
 
@@ -191,7 +75,7 @@
         processor.disconnect();
         source.disconnect();
         audioContext.close();
-        chatStatus.textContent = "⏹️ Stopping recording...";
+        chatStatus.textContent = "Stopping recording...";
       }
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send("EOF");
@@ -199,11 +83,9 @@
       }
     }
 
-    // Toggle record button
     recordBtn.addEventListener("click", () => {
       recordBtn.classList.add("clicked");
       setTimeout(() => recordBtn.classList.remove("clicked"), 200);
-
       if (!recordBtn.classList.contains("recording")) {
         startRecording();
         recordBtn.classList.add("recording");
