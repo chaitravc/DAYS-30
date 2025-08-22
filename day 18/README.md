@@ -1,161 +1,83 @@
 
+### Day 18 – Turn Detection
 
-# AI Voice Agent
-
-An interactive AI-powered voice agent that listens to user speech, processes it using advanced AI models, and responds with natural-sounding speech.
-
-This project integrates:
-
-* **Murf API** – Text-to-Speech conversion
-* **AssemblyAI API** – Speech-to-Text transcription
-* **Google Gemini API** – Natural Language Understanding & Response Generation
+This task focuses on using **AssemblyAI’s streaming API** to detect when a user has finished speaking (turn detection). Once a turn ends, the transcription is finalized and sent to the client over WebSockets. The client displays the transcription in the UI at the end of the turn.
 
 ---
 
-##  Features
+#### Task Overview
 
-*  **Speech Recognition**: Converts your spoken words into text using AssemblyAI
-*  **Intelligent Response**: Processes text using Google Gemini for accurate, context-aware replies
-*  **Natural Voice Output**: Converts AI responses to speech with Murf API
-*  **FastAPI Backend**: Efficient API endpoints for real-time interaction
-*  **Interactive Frontend**: Simple HTML/CSS/JS interface for recording and playing responses
-
----
-
-##  Tech Stack
-
-* **Frontend**: HTML, CSS, JavaScript
-* **Backend**: Python (FastAPI)
-* **APIs**:
-
-  * [Murf API](https://murf.ai) – Text-to-Speech
-  * [AssemblyAI](https://www.assemblyai.com) – Speech-to-Text
-  * [Google Gemini](https://ai.google) – LLM for text processing
-* **Others**: Fetch API for frontend-backend communication
-
+* Enable turn detection with AssemblyAI’s streaming API
+* Detect when the user stops speaking
+* Send a WebSocket message to the client to indicate the end of the turn
+* Display the transcription in the UI at the end of each turn
 
 ---
 
-##  Project Structure
+#### How It Works
 
-```
-voice/
-│── .venv/                       # Virtual environment 
-│── audio_outputs/               # Stores generated AI voice audio files
-│── static/                      # Frontend static files
-│   ├── index.html               # Main user interface
-│   ├── index.js                 # Handles frontend logic & API calls
-│   ├── style.css                # UI styling
-│   └── WhatsApp Image ....jpeg  # Screenshot/image assets
-│── uploads/                     # Stores uploaded audio files from user
-│── .env                         # Environment variables (API keys, config)
-│── main.py                      # FastAPI backend
-│── README.md                    # Project documentation
-│── requirements.txt             # Python dependencies
-```
-
-
-
+1. User speaks into the microphone
+2. Audio is streamed to AssemblyAI for real-time transcription
+3. AssemblyAI signals when the user has stopped speaking (end of turn)
+4. Backend sends a WebSocket message to the client notifying end of turn
+5. Client displays the transcription on the UI
 
 ---
 
+#### Tech Stack
 
+* **Backend** – Python (FastAPI)
+* **Streaming & Turn Detection** – AssemblyAI API
+* **Communication** – WebSockets
+* **Frontend** – HTML/JavaScript UI
+* **Runtime** – Uvicorn
 
-##  How to Run the AI Voice Agent
+---
 
-###  Clone the Repository
+#### Setup Instructions
+
+1. **Clone Repository**
 
 ```bash
-git clone https://github.com/yourusername/ai-voice-agent.git
-cd ai-voice-agent
+git clone https://github.com/chaitravc/day18.git
+cd day18
 ```
 
----
-
-###  Install Dependencies
+2. **Install Dependencies**
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-###  Set Up Environment Variables
-
-Create a `.env` file in the **root** folder and add:
+3. **Add Environment Variables**
+   Create a `.env` file in the root directory:
 
 ```env
-MURF_API_KEY=your_murf_api_key_here
-ASSEMBLYAI_API_KEY=your_assemblyai_api_key_here
-GOOGLE_API_KEY=your_gemini_api_key_here
+ASSEMBLYAI_API_KEY=your_assemblyai_api_key
 ```
 
----
-
-###  Run the Backend Server
+4. **Run Server**
 
 ```bash
 uvicorn main:app --reload
 ```
 
-Visit:
 
-```
-http://127.0.0.1:8000
-```
 
 ---
 
-###  Open the Frontend
+#### Dependencies
 
-Open in your browser:
-
-```
-http://127.0.0.1:8000/static/index.html
-```
----
-
-##  How It Works
-
-1. User clicks **Record** → speaks into microphone
-2. Audio is sent to **AssemblyAI** → returns transcribed text
-3. Text is sent to **Google Gemini** → returns AI-generated reply
-4. Reply is sent to **Murf API** → returns audio file of the response
-5. Audio is played in the browser
+* fastapi
+* uvicorn
+* requests
+* websockets
+* python-dotenv
 
 ---
 
-##  API Endpoints
+#### Notes
 
-| Method | Endpoint          | Description                          |
-| ------ | ----------------- | ------------------------------------ |
-| POST   | `/api/agent/chat` | Send audio and get AI voice response |
-
----
-
-##  Dependencies
-
-* `fastapi`
-* `uvicorn`
-* `requests`
-* `python-dotenv`
-* `pydantic`
-
-Install all at once:
-
-```bash
-pip install fastapi uvicorn requests python-dotenv pydantic
-```
-
-
-
-## Test the Voice Agent
-
-Open the frontend in your browser.
-
-Click Record → Speak → Let AI respond.
-
-If API keys are valid, you’ll hear the AI-generated voice.
-
+This task demonstrates **real-time turn detection** with AssemblyAI. It enables smoother conversational flows by signaling when the user has finished speaking and displaying the final transcript in the UI.
 
 
