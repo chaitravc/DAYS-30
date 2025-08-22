@@ -81,4 +81,5 @@ uvicorn main:app --reload
 
 This task demonstrates **real-time audio transcription** using AssemblyAI’s Python SDK. By combining WebSockets with AssemblyAI, audio streams from the client can be processed into live transcriptions, forming the backbone of interactive AI voice agents.
 
+### Output
 <img width="1920" height="1080" alt="Screenshot 2025-08-18 190823" src="https://github.com/user-attachments/assets/f6378238-5003-4144-b2c0-eaad7f421487" />
