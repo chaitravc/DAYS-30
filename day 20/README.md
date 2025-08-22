@@ -90,4 +90,9 @@ UklGRiQAAABXQVZFZm10IBAAAAABAAEA...
 
 ---
 
+## Output
+
+<img width="1920" height="1080" alt="Screenshot 2025-08-21 153031" src="https://github.com/user-attachments/assets/4ce43610-54bf-4cba-882d-58a5f5dbf563" />
+
+<img width="1920" height="1080" alt="Screenshot 2025-08-21 153102" src="https://github.com/user-attachments/assets/ef229558-1ff1-45e3-b5a5-733b1fcc40fb" />
 
