@@ -1,161 +1,85 @@
 
 
-# AI Voice Agent
+### Day 17 – WebSockets and AssemblyAI
 
-An interactive AI-powered voice agent that listens to user speech, processes it using advanced AI models, and responds with natural-sounding speech.
-
-This project integrates:
-
-* **Murf API** – Text-to-Speech conversion
-* **AssemblyAI API** – Speech-to-Text transcription
-* **Google Gemini API** – Natural Language Understanding & Response Generation
+This task focuses on using **AssemblyAI’s Python SDK** to transcribe streaming audio data sent from the client to the server. The transcription can be printed directly in the Python server console or displayed on the UI.
 
 ---
 
-##  Features
+#### Task Overview
 
-*  **Speech Recognition**: Converts your spoken words into text using AssemblyAI
-*  **Intelligent Response**: Processes text using Google Gemini for accurate, context-aware replies
-*  **Natural Voice Output**: Converts AI responses to speech with Murf API
-*  **FastAPI Backend**: Efficient API endpoints for real-time interaction
-*  **Interactive Frontend**: Simple HTML/CSS/JS interface for recording and playing responses
-
----
-
-##  Tech Stack
-
-* **Frontend**: HTML, CSS, JavaScript
-* **Backend**: Python (FastAPI)
-* **APIs**:
-
-  * [Murf API](https://murf.ai) – Text-to-Speech
-  * [AssemblyAI](https://www.assemblyai.com) – Speech-to-Text
-  * [Google Gemini](https://ai.google) – LLM for text processing
-* **Others**: Fetch API for frontend-backend communication
-
+* Stream audio data from the client to the server over WebSockets
+* Use AssemblyAI’s Python SDK to transcribe the audio in real time
+* Print the transcription in the server console or display it on the UI
+* Ensure the audio is sent in **16kHz, 16-bit, mono PCM** format
 
 ---
 
-##  Project Structure
+#### How It Works
 
-```
-voice/
-│── .venv/                       # Virtual environment 
-│── audio_outputs/               # Stores generated AI voice audio files
-│── static/                      # Frontend static files
-│   ├── index.html               # Main user interface
-│   ├── index.js                 # Handles frontend logic & API calls
-│   ├── style.css                # UI styling
-│   └── WhatsApp Image ....jpeg  # Screenshot/image assets
-│── uploads/                     # Stores uploaded audio files from user
-│── .env                         # Environment variables (API keys, config)
-│── main.py                      # FastAPI backend
-│── README.md                    # Project documentation
-│── requirements.txt             # Python dependencies
-```
-
-
-
+1. Client captures audio from the microphone
+2. Audio data is sent to the backend server over WebSockets
+3. Server passes the audio stream to AssemblyAI’s Python SDK
+4. AssemblyAI transcribes the streaming audio in real time
+5. Transcription is printed on the server console or shown in the UI
 
 ---
 
+#### Tech Stack
 
+* **Backend** – Python (FastAPI)
+* **Streaming & Transcription** – AssemblyAI Python SDK
+* **Communication** – WebSockets
+* **Frontend** – HTML/JavaScript UI
+* **Runtime** – Uvicorn
 
-##  How to Run the AI Voice Agent
+---
 
-###  Clone the Repository
+#### Setup Instructions
+
+1. **Clone Repository**
 
 ```bash
-git clone https://github.com/yourusername/ai-voice-agent.git
-cd ai-voice-agent
+git clone https://github.com/chaitravc/day17.git
+cd day17
 ```
 
----
-
-###  Install Dependencies
+2. **Install Dependencies**
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-###  Set Up Environment Variables
-
-Create a `.env` file in the **root** folder and add:
+3. **Add Environment Variables**
+   Create a `.env` file in the root directory:
 
 ```env
-MURF_API_KEY=your_murf_api_key_here
-ASSEMBLYAI_API_KEY=your_assemblyai_api_key_here
-GOOGLE_API_KEY=your_gemini_api_key_here
+ASSEMBLYAI_API_KEY=your_assemblyai_api_key
 ```
 
----
-
-###  Run the Backend Server
+4. **Run Server**
 
 ```bash
 uvicorn main:app --reload
 ```
 
-Visit:
+---
 
-```
-http://127.0.0.1:8000
-```
+
+
+#### Dependencies
+
+* fastapi
+* uvicorn
+* websockets
+* assemblyai
+* python-dotenv
 
 ---
 
-###  Open the Frontend
+#### Notes
 
-Open in your browser:
+This task demonstrates **real-time audio transcription** using AssemblyAI’s Python SDK. By combining WebSockets with AssemblyAI, audio streams from the client can be processed into live transcriptions, forming the backbone of interactive AI voice agents.
 
-```
-http://127.0.0.1:8000/static/index.html
-```
----
-
-##  How It Works
-
-1. User clicks **Record** → speaks into microphone
-2. Audio is sent to **AssemblyAI** → returns transcribed text
-3. Text is sent to **Google Gemini** → returns AI-generated reply
-4. Reply is sent to **Murf API** → returns audio file of the response
-5. Audio is played in the browser
-
----
-
-##  API Endpoints
-
-| Method | Endpoint          | Description                          |
-| ------ | ----------------- | ------------------------------------ |
-| POST   | `/api/agent/chat` | Send audio and get AI voice response |
-
----
-
-##  Dependencies
-
-* `fastapi`
-* `uvicorn`
-* `requests`
-* `python-dotenv`
-* `pydantic`
-
-Install all at once:
-
-```bash
-pip install fastapi uvicorn requests python-dotenv pydantic
-```
-
-
-
-## Test the Voice Agent
-
-Open the frontend in your browser.
-
-Click Record → Speak → Let AI respond.
-
-If API keys are valid, you’ll hear the AI-generated voice.
-
-
-
+### Output
+<img width="1920" height="1080" alt="Screenshot 2025-08-18 190823" src="https://github.com/user-attachments/assets/f6378238-5003-4144-b2c0-eaad7f421487" />
