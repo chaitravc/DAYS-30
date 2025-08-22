@@ -81,3 +81,7 @@ uvicorn main:app --reload
 This task demonstrates **real-time turn detection** with AssemblyAI. It enables smoother conversational flows by signaling when the user has finished speaking and displaying the final transcript in the UI.
 
 
+
+
+https://github.com/user-attachments/assets/9a8a8cf6-1924-4be6-b560-e7498b0f5686
+
