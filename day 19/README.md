@@ -95,4 +95,8 @@ Hello, how can I help you today?
 * The frontend remains unchanged from earlier tasks.
 
 ---
+# Output
+
+
+https://github.com/user-attachments/assets/ddb98724-109e-46dc-97fa-7050c570e9bb
 
