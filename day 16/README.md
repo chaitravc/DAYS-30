@@ -1,35 +1,35 @@
 
-### Day 18 – Turn Detection
 
-This task focuses on using **AssemblyAI’s streaming API** to detect when a user has finished speaking (turn detection). Once a turn ends, the transcription is finalized and sent to the client over WebSockets. The client displays the transcription in the UI at the end of the turn.
+### Day 16 – Streaming Audio
+
+This task focuses on **recording and streaming audio** from the client to the server using WebSockets, and saving the received audio data to a file. No transcription, LLM processing, or TTS is required for this task.
 
 ---
 
 #### Task Overview
 
-* Enable turn detection with AssemblyAI’s streaming API
-* Detect when the user stops speaking
-* Send a WebSocket message to the client to indicate the end of the turn
-* Display the transcription in the UI at the end of each turn
+* Record audio on the client side
+* Stream audio data to the server over WebSockets at regular intervals
+* Receive binary audio data on the server
+* Save the received audio data into a file
+* Breakage of the existing UI is expected and acceptable for this task
 
 ---
 
 #### How It Works
 
-1. User speaks into the microphone
-2. Audio is streamed to AssemblyAI for real-time transcription
-3. AssemblyAI signals when the user has stopped speaking (end of turn)
-4. Backend sends a WebSocket message to the client notifying end of turn
-5. Client displays the transcription on the UI
+1. Client records audio from the microphone
+2. Instead of accumulating chunks locally, the client streams audio chunks to the server using WebSockets
+3. Server receives the audio data as binary messages
+4. Server writes the audio data to a file for storage
 
 ---
 
 #### Tech Stack
 
+* **Frontend** – HTML/JavaScript (for audio recording & WebSocket client)
 * **Backend** – Python (FastAPI)
-* **Streaming & Turn Detection** – AssemblyAI API
 * **Communication** – WebSockets
-* **Frontend** – HTML/JavaScript UI
 * **Runtime** – Uvicorn
 
 ---
@@ -39,8 +39,8 @@ This task focuses on using **AssemblyAI’s streaming API** to detect when a use
 1. **Clone Repository**
 
 ```bash
-git clone https://github.com/chaitravc/day18.git
-cd day18
+git clone https://github.com/chaitravc/day16.git
+cd day16
 ```
 
 2. **Install Dependencies**
@@ -49,39 +49,38 @@ cd day18
 pip install -r requirements.txt
 ```
 
-3. **Add Environment Variables**
-   Create a `.env` file in the root directory:
-
-```env
-ASSEMBLYAI_API_KEY=your_assemblyai_api_key
-```
-
-4. **Run Server**
+3. **Run Server**
 
 ```bash
 uvicorn main:app --reload
 ```
 
+4. **Test Recording**
 
+* Open the frontend in your browser
+* Speak into the microphone
+* Audio data is streamed to the backend and saved as a file
 
 ---
+
+
 
 #### Dependencies
 
 * fastapi
 * uvicorn
-* requests
 * websockets
-* python-dotenv
 
 ---
 
 #### Notes
 
-This task demonstrates **real-time turn detection** with AssemblyAI. It enables smoother conversational flows by signaling when the user has finished speaking and displaying the final transcript in the UI.
+This task demonstrates the **foundation of real-time audio streaming**. By saving streamed audio to a file, we validate that the client-server pipeline works correctly before introducing transcription (AssemblyAI), LLM responses, or text-to-speech (Murf AI) in later tasks.
 
+---
 
+## Output
 
+<img width="1920" height="1020" alt="Screenshot 2025-08-17 113227" src="https://github.com/user-attachments/assets/c474c1f4-0e5e-4a24-84ac-ed517ab52546" />
 
-https://github.com/user-attachments/assets/9a8a8cf6-1924-4be6-b560-e7498b0f5686
 
