@@ -1,4 +1,3 @@
-/* ========================= Modern Glassmorphism Background ========================= */
 body {
     margin: 0;
     font-family: 'Segoe UI', sans-serif;
@@ -10,7 +9,7 @@ body {
     color: white;
 }
 
-/* ========================= Wrapper / Center Content ========================= */
+
 .wrapper {
     text-align: center;
     max-width: 500px;
@@ -18,7 +17,7 @@ body {
     padding: 20px;
 }
 
-/* ========================= Heading ========================= */
+
 h1 {
     font-size: 2.5rem;
     margin-bottom: 10px;
@@ -26,7 +25,7 @@ h1 {
     text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
 }
 
-/* ========================= Mic Button ========================= */
+
 .mic-btn {
     width: 120px;
     height: 120px;
@@ -62,7 +61,6 @@ h1 {
     100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
 }
 
-/* ========================= Status Text ========================= */
 #chat-status {
     margin: 15px 0;
     font-size: 1.1rem;
@@ -71,7 +69,7 @@ h1 {
     text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
 }
 
-/* ========================= Transcription Output (Response Box) ========================= */
+
 .response-box {
     background: rgba(255, 255, 255, 0.08); /* Glassmorphism effect */
     padding: 20px;
@@ -105,7 +103,7 @@ h1 {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* ========================= Audio Player ========================= */
+
 audio {
     margin-top: 10px;
     width: 100%;
