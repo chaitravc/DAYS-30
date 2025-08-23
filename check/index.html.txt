@@ -4,7 +4,384 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI Voice Agent - Streaming</title>
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ========================= Modern Glassmorphism Background ========================= */
+    body {
+        margin: 0;
+        font-family: 'Segoe UI', sans-serif;
+        background: linear-gradient(135deg, #0b2a55, #133b73);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        color: white;
+    }
+
+    /* ========================= Wrapper / Center Content ========================= */
+    .wrapper {
+        text-align: center;
+        max-width: 600px;
+        width: 100%;
+        padding: 20px;
+    }
+
+    /* ========================= Heading ========================= */
+    h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        color: #FFD700;
+        text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+    }
+
+    /* ========================= Mic Button ========================= */
+    .mic-btn {
+        width: 120px;
+        height: 120px;
+        background: rgba(255, 215, 0, 0.15);
+        border-radius: 50%;
+        backdrop-filter: blur(10px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 30px auto;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 8px 20px rgba(255, 215, 0, 0.4);
+        position: relative;
+    }
+
+    .mic-btn:hover {
+        transform: scale(1.05);
+    }
+
+    .mic-btn.clicked {
+        transform: scale(0.95);
+    }
+
+    .mic-icon {
+        font-size: 2.5rem;
+        transition: color 0.2s ease;
+    }
+
+    /* Recording Animation */
+    .mic-btn.recording {
+        animation: pulse 1.5s infinite;
+        background: rgba(255, 215, 0, 0.3);
+    }
+
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
+        70% { box-shadow: 0 0 0 25px rgba(255, 215, 0, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+    }
+
+    /* ========================= Status Text ========================= */
+    #chat-status {
+        margin: 15px 0;
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: #FFD700;
+        text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+        min-height: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Status Animation for Audio Playback */
+    #chat-status[data-status="playing"] {
+        animation: audioWave 2s ease-in-out infinite;
+    }
+
+    @keyframes audioWave {
+        0%, 100% { color: #FFD700; }
+        25% { color: #FFA500; }
+        50% { color: #FF8C00; }
+        75% { color: #FFA500; }
+    }
+
+    /* ========================= Transcription Output (Response Box) ========================= */
+    .response-box {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 20px;
+        border-radius: 15px;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 20px rgba(255, 215, 0, 0.15);
+        text-align: left;
+        color: white !important;
+        margin-top: 20px;
+        font-size: 18px;
+        max-height: 250px;
+        overflow-y: auto;
+        word-wrap: break-word;
+        line-height: 1.6;
+        scroll-behavior: smooth;
+    }
+
+    /* Custom scrollbar for response box */
+    .response-box::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .response-box::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+    }
+
+    .response-box::-webkit-scrollbar-thumb {
+        background: rgba(255, 215, 0, 0.5);
+        border-radius: 3px;
+    }
+
+    .response-box::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 215, 0, 0.7);
+    }
+
+    /* Style individual transcripts */
+    .response-box p {
+        margin: 12px 0;
+        padding: 10px 15px;
+        border-radius: 10px;
+        font-size: 16px;
+        animation: fadeIn 0.4s ease-in-out;
+        position: relative;
+    }
+
+    /* User message styling */
+    .response-box p:not(.ai-response) {
+        background: rgba(100, 149, 237, 0.15);
+        border-left: 4px solid #6495ED;
+        color: #E6F3FF;
+    }
+
+    /* AI response styling */
+    .response-box p.ai-response {
+        background: rgba(255, 215, 0, 0.15);
+        border-left: 4px solid #FFD700;
+        color: #FFD700 !important;
+        position: relative;
+    }
+
+    /* Audio playing indicator */
+    .response-box p.ai-response.playing:after {
+        content: "🔊";
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        animation: audioIndicator 1s ease-in-out infinite;
+    }
+
+    @keyframes audioIndicator {
+        0%, 100% { opacity: 0.5; transform: translateY(-50%) scale(1); }
+        50% { opacity: 1; transform: translateY(-50%) scale(1.1); }
+    }
+
+    /* Fade-in effect for new transcripts */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ========================= Audio Status Display ========================= */
+    .audio-status {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 18px;
+        border-radius: 15px;
+        backdrop-filter: blur(12px);
+        margin-top: 20px;
+        border: 1px solid rgba(255, 215, 0, 0.2);
+        box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .audio-status:hover {
+        background: rgba(255, 255, 255, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .audio-status p {
+        margin: 10px 0;
+        font-size: 14px;
+        color: #FFD700;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0;
+    }
+
+    .audio-status span {
+        font-weight: bold;
+        color: #ffffff;
+        background: rgba(255, 215, 0, 0.2);
+        padding: 4px 12px;
+        border-radius: 8px;
+        min-width: 70px;
+        text-align: center;
+        transition: all 0.2s ease;
+        border: 1px solid rgba(255, 215, 0, 0.3);
+    }
+
+    /* Playback status specific styling */
+    #playback-status {
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    #playback-status[data-status="playing"] {
+        background: rgba(0, 255, 0, 0.2) !important;
+        color: #00FF00 !important;
+        border-color: rgba(0, 255, 0, 0.5) !important;
+        animation: playingGlow 2s ease-in-out infinite;
+    }
+
+    @keyframes playingGlow {
+        0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 0, 0.3); }
+        50% { box-shadow: 0 0 15px rgba(0, 255, 0, 0.6); }
+    }
+
+    #queue-length {
+        background: rgba(255, 165, 0, 0.2) !important;
+        color: #FFA500 !important;
+        border-color: rgba(255, 165, 0, 0.5) !important;
+    }
+
+    /* ========================= Hidden Audio Players ========================= */
+    #audio-players {
+        position: absolute;
+        left: -9999px;
+        top: -9999px;
+    }
+
+    /* ========================= Loading Indicators ========================= */
+    .loading-dots {
+        display: inline-block;
+        position: relative;
+        width: 80px;
+        height: 20px;
+    }
+
+    .loading-dots div {
+        position: absolute;
+        top: 50%;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #FFD700;
+        animation: loading-dots 1.2s linear infinite;
+    }
+
+    .loading-dots div:nth-child(1) { left: 8px; animation-delay: 0s; }
+    .loading-dots div:nth-child(2) { left: 30px; animation-delay: -0.4s; }
+    .loading-dots div:nth-child(3) { left: 52px; animation-delay: -0.8s; }
+
+    @keyframes loading-dots {
+        0%, 80%, 100% {
+            transform: translateY(-50%) scale(0);
+        }
+        40% {
+            transform: translateY(-50%) scale(1);
+        }
+    }
+
+    /* ========================= Volume Control ========================= */
+    .volume-control {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .volume-control label {
+        color: #FFD700;
+        font-size: 14px;
+        min-width: 60px;
+    }
+
+    .volume-control input[type="range"] {
+        flex: 1;
+        height: 5px;
+        background: rgba(255, 215, 0, 0.3);
+        outline: none;
+        border-radius: 5px;
+    }
+
+    .volume-control input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 15px;
+        height: 15px;
+        background: #FFD700;
+        cursor: pointer;
+        border-radius: 50%;
+    }
+
+    /* ========================= Responsive Design ========================= */
+    @media (max-width: 768px) {
+        .wrapper {
+            max-width: 90%;
+            padding: 15px;
+        }
+
+        h1 {
+            font-size: 2rem;
+        }
+
+        .mic-btn {
+            width: 100px;
+            height: 100px;
+        }
+
+        .mic-icon {
+            font-size: 2rem;
+        }
+
+        .response-box {
+            max-height: 200px;
+            padding: 15px;
+            font-size: 16px;
+        }
+
+        .audio-status {
+            padding: 15px;
+        }
+
+        .audio-status p {
+            font-size: 13px;
+            flex-direction: column;
+            text-align: center;
+            gap: 5px;
+        }
+
+        .audio-status span {
+            min-width: auto;
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        h1 {
+            font-size: 1.8rem;
+        }
+
+        .mic-btn {
+            width: 90px;
+            height: 90px;
+        }
+
+        .mic-icon {
+            font-size: 1.8rem;
+        }
+
+        .response-box p {
+            font-size: 14px;
+            padding: 8px 12px;
+        }
+    }
+  </style>
 </head>
 <body>
   <div class="wrapper">
@@ -18,6 +395,13 @@
     <!-- Status -->
     <p id="chat-status">Press the button to start streaming</p>
 
+    <!-- Volume Control -->
+    <div class="volume-control">
+      <label for="volume-slider">Volume:</label>
+      <input type="range" id="volume-slider" min="0" max="100" value="80">
+      <span id="volume-value">80%</span>
+    </div>
+
     <!-- Response / Transcript Output -->
     <div id="transcripts" class="response-box"></div>
 
@@ -30,7 +414,7 @@
     </div>
 
     <!-- Hidden audio elements for seamless playback -->
-    <div id="audio-players" style="display: none;"></div>
+    <div id="audio-players"></div>
   </div>
 
   <script>
@@ -42,7 +426,9 @@
     let isPlaying = false;
     let currentAudioIndex = 0;
     let audioPlayerPool = [];
-    let maxPlayers = 10;
+    let maxPlayers = 8; // Reduced for better performance
+    let globalVolume = 0.8;
+    let currentAIResponse = null;
 
     const recordBtn = document.getElementById("record-btn");
     const chatStatus = document.getElementById("chat-status");
@@ -52,20 +438,40 @@
     const queueLengthSpan = document.getElementById("queue-length");
     const playbackStatusSpan = document.getElementById("playback-status");
     const audioPlayersDiv = document.getElementById("audio-players");
+    const volumeSlider = document.getElementById("volume-slider");
+    const volumeValue = document.getElementById("volume-value");
+
+    // Volume control
+    volumeSlider.addEventListener('input', function() {
+      globalVolume = this.value / 100;
+      volumeValue.textContent = this.value + '%';
+
+      // Apply volume to all active players
+      audioPlayerPool.forEach(player => {
+        if (player.inUse) {
+          player.element.volume = globalVolume;
+        }
+      });
+    });
 
     // Initialize audio player pool
     function initializeAudioPlayerPool() {
+      audioPlayerPool = []; // Clear existing pool
       for (let i = 0; i < maxPlayers; i++) {
         const audio = document.createElement('audio');
         audio.preload = 'auto';
-        audio.style.display = 'none';
+        audio.volume = globalVolume;
+        audio.crossOrigin = 'anonymous';
         audioPlayersDiv.appendChild(audio);
         audioPlayerPool.push({
           element: audio,
           inUse: false,
-          index: i
+          index: i,
+          endHandler: null,
+          errorHandler: null
         });
       }
+      console.log(`🎵 Audio player pool initialized with ${maxPlayers} players`);
     }
 
     // Get available audio player from pool
@@ -75,62 +481,102 @@
 
     // Release audio player back to pool
     function releasePlayer(player) {
-      player.inUse = false;
-      player.element.src = '';
-      player.element.removeEventListener('ended', player.endHandler);
-      player.element.removeEventListener('error', player.errorHandler);
-    }
-
-    // Convert base64 to blob URL
-    function base64ToBlob(base64, mimeType = 'audio/wav') {
-      const binaryString = atob(base64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+      if (player.endHandler) {
+        player.element.removeEventListener('ended', player.endHandler);
+        player.endHandler = null;
       }
-      const blob = new Blob([bytes], { type: mimeType });
-      return URL.createObjectURL(blob);
+      if (player.errorHandler) {
+        player.element.removeEventListener('error', player.errorHandler);
+        player.errorHandler = null;
+      }
+
+      player.element.pause();
+      player.element.currentTime = 0;
+
+      // Clean up blob URL
+      if (player.element.src && player.element.src.startsWith('blob:')) {
+        URL.revokeObjectURL(player.element.src);
+      }
+      player.element.src = '';
+      player.inUse = false;
     }
 
-    // Queue audio chunk for playback
+    // Convert base64 to blob URL with optimized decoding
+    function base64ToBlob(base64, mimeType = 'audio/wav') {
+      try {
+        const binaryString = atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: mimeType });
+        return URL.createObjectURL(blob);
+      } catch (error) {
+        console.error('Error converting base64 to blob:', error);
+        return null;
+      }
+    }
+
+    // Queue audio chunk for playback with improved buffering
     function queueAudioChunk(base64Audio, chunkNumber) {
       try {
         const audioUrl = base64ToBlob(base64Audio);
+        if (!audioUrl) {
+          console.error(`Failed to create blob URL for chunk ${chunkNumber}`);
+          return;
+        }
+
         audioQueue.push({
           url: audioUrl,
           chunkNumber: chunkNumber,
-          played: false
+          played: false,
+          timestamp: Date.now()
         });
 
         updateQueueStatus();
 
-        // Start playback if not already playing
-        if (!isPlaying) {
-          playNextAudioChunk();
+        // Start playback immediately if not already playing
+        if (!isPlaying && audioQueue.length > 0) {
+          // Add small delay to allow for better buffering
+          setTimeout(() => {
+            if (!isPlaying) {
+              playNextAudioChunk();
+            }
+          }, 50);
         }
       } catch (error) {
         console.error('Error queuing audio chunk:', error);
       }
     }
 
-    // Play next audio chunk in queue
-    function playNextAudioChunk() {
-      if (audioQueue.length === 0) {
-        isPlaying = false;
-        playbackStatusSpan.textContent = "Idle";
-        return;
-      }
-
+    // Enhanced playback with better error handling and smoother transitions
+    async function playNextAudioChunk() {
       const nextChunk = audioQueue.find(chunk => !chunk.played);
       if (!nextChunk) {
         isPlaying = false;
         playbackStatusSpan.textContent = "Complete";
+        playbackStatusSpan.removeAttribute('data-status');
+
+        // Remove playing indicator from AI response
+        if (currentAIResponse) {
+          currentAIResponse.classList.remove('playing');
+          const playingIndicator = document.getElementById("audio-playing-indicator");
+          if (playingIndicator) {
+            playingIndicator.remove();
+          }
+
+          // Add completion checkmark
+          const completedIndicator = document.createElement("span");
+          completedIndicator.textContent = " ✅";
+          completedIndicator.style.opacity = "0.8";
+          currentAIResponse.appendChild(completedIndicator);
+        }
         return;
       }
 
       const player = getAvailablePlayer();
       if (!player) {
-        console.warn('No available audio players, waiting...');
+        console.warn('No available audio players, retrying...');
         setTimeout(() => playNextAudioChunk(), 100);
         return;
       }
@@ -138,24 +584,28 @@
       isPlaying = true;
       player.inUse = true;
       playbackStatusSpan.textContent = `Playing chunk ${nextChunk.chunkNumber}`;
+      playbackStatusSpan.setAttribute('data-status', 'playing');
 
-      // Set up event handlers
-      player.endHandler = () => {
+      // Add playing indicator to AI response
+      if (currentAIResponse) {
+        currentAIResponse.classList.add('playing');
+      }
+
+      // Set up event handlers with enhanced error handling
+      player.endHandler = function() {
         console.log(`✅ Finished playing chunk ${nextChunk.chunkNumber}`);
         nextChunk.played = true;
         releasePlayer(player);
-        URL.revokeObjectURL(nextChunk.url); // Clean up blob URL
         updateQueueStatus();
 
-        // Play next chunk with minimal delay
+        // Continue to next chunk with minimal delay for seamless playback
         setTimeout(() => playNextAudioChunk(), 10);
       };
 
-      player.errorHandler = (error) => {
+      player.errorHandler = function(error) {
         console.error(`❌ Error playing chunk ${nextChunk.chunkNumber}:`, error);
-        nextChunk.played = true;
+        nextChunk.played = true; // Mark as played to skip
         releasePlayer(player);
-        URL.revokeObjectURL(nextChunk.url);
         updateQueueStatus();
 
         // Continue to next chunk despite error
@@ -165,14 +615,38 @@
       player.element.addEventListener('ended', player.endHandler);
       player.element.addEventListener('error', player.errorHandler);
 
-      // Load and play the audio
-      player.element.src = nextChunk.url;
-      player.element.play().catch(error => {
-        console.error(`Failed to play chunk ${nextChunk.chunkNumber}:`, error);
-        player.errorHandler(error);
-      });
+      // Enhanced loading and playback with better error handling
+      try {
+        player.element.src = nextChunk.url;
+        player.element.volume = globalVolume;
 
-      console.log(`🔊 Playing audio chunk ${nextChunk.chunkNumber} on player ${player.index}`);
+        // Pre-load the audio
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Load timeout')), 5000);
+
+          player.element.addEventListener('canplaythrough', function onCanPlay() {
+            clearTimeout(timeout);
+            player.element.removeEventListener('canplaythrough', onCanPlay);
+            resolve();
+          }, { once: true });
+
+          player.element.addEventListener('error', function onError(e) {
+            clearTimeout(timeout);
+            player.element.removeEventListener('error', onError);
+            reject(e);
+          }, { once: true });
+
+          player.element.load();
+        });
+
+        // Play the audio
+        await player.element.play();
+        console.log(`🔊 Playing audio chunk ${nextChunk.chunkNumber} on player ${player.index}`);
+
+      } catch (error) {
+        console.error(`Failed to load/play chunk ${nextChunk.chunkNumber}:`, error);
+        player.errorHandler(error);
+      }
     }
 
     // Update queue status display
@@ -192,19 +666,20 @@
       return (base64String.length * 3) / 4;
     }
 
-    // Clear audio queue and stop all playback
+    // Enhanced cleanup function
     function clearAudioQueue() {
-      // Stop all playing audio
+      console.log('🧹 Clearing audio queue and stopping playback...');
+
+      // Stop all playing audio and release players
       audioPlayerPool.forEach(player => {
         if (player.inUse) {
-          player.element.pause();
           releasePlayer(player);
         }
       });
 
       // Clean up blob URLs
       audioQueue.forEach(chunk => {
-        if (chunk.url) {
+        if (chunk.url && chunk.url.startsWith('blob:')) {
           URL.revokeObjectURL(chunk.url);
         }
       });
@@ -213,56 +688,73 @@
       audioChunks = [];
       totalAudioSize = 0;
       isPlaying = false;
+      currentAIResponse = null;
+
       updateAudioStats();
       updateQueueStatus();
       playbackStatusSpan.textContent = "Idle";
+      playbackStatusSpan.removeAttribute('data-status');
     }
 
+    // Enhanced microphone recording with better PCM conversion
     async function startRecording() {
       try {
-        // Clear previous audio data
         clearAudioQueue();
-
         ws = new WebSocket("ws://localhost:8000/ws/audio");
 
         ws.onopen = async () => {
           chatStatus.textContent = "🎤 Listening... Speak now!";
           console.log("Connected to server");
 
-          // Microphone access
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-          source = audioContext.createMediaStreamSource(stream);
-          processor = audioContext.createScriptProcessor(4096, 1, 1);
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                sampleRate: 16000,
+                channelCount: 1,
+                echoCancellation: true,
+                noiseSuppression: true
+              }
+            });
 
-          processor.onaudioprocess = (event) => {
-            const inputData = event.inputBuffer.getChannelData(0);
+            audioContext = new (window.AudioContext || window.webkitAudioContext)({
+              sampleRate: 16000
+            });
+            source = audioContext.createMediaStreamSource(stream);
+            processor = audioContext.createScriptProcessor(4096, 1, 1);
 
-            // Convert float32 → int16 PCM
-            const pcmData = new Int16Array(inputData.length);
-            for (let i = 0; i < inputData.length; i++) {
-              const sample = Math.max(-1, Math.min(1, inputData[i]));
-              pcmData[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
-            }
+            processor.onaudioprocess = function(event) {
+              const inputData = event.inputBuffer.getChannelData(0);
 
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send(pcmData.buffer);
-            }
-          };
+              // Enhanced PCM conversion with proper scaling
+              const pcmData = new Int16Array(inputData.length);
+              for (let i = 0; i < inputData.length; i++) {
+                const sample = Math.max(-1, Math.min(1, inputData[i]));
+                pcmData[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+              }
 
-          source.connect(processor);
-          processor.connect(audioContext.destination);
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(pcmData.buffer);
+              }
+            };
+
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+
+          } catch (micError) {
+            console.error("Microphone error:", micError);
+            chatStatus.textContent = "❌ Microphone access denied.";
+          }
         };
 
-        // Handle messages from server
+        // Enhanced message handling
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
 
           switch(data.type) {
             case "transcript":
-              const p = document.createElement("p");
-              p.textContent = `🗣️ You: ${data.text}`;
-              transcriptsDiv.appendChild(p);
+              const userP = document.createElement("p");
+              userP.textContent = `🗣️ You: ${data.text}`;
+              transcriptsDiv.appendChild(userP);
               transcriptsDiv.scrollTop = transcriptsDiv.scrollHeight;
               break;
 
@@ -271,43 +763,78 @@
               chatStatus.textContent = "🤖 Generating response...";
 
               // Add AI response indicator
-              const aiP = document.createElement("p");
-              aiP.textContent = "🤖 AI: ";
-              aiP.id = "ai-response-indicator";
-              aiP.style.color = "#FFD700";
-              transcriptsDiv.appendChild(aiP);
+              currentAIResponse = document.createElement("p");
+              currentAIResponse.textContent = "🤖 AI: ";
+              currentAIResponse.className = "ai-response";
+              currentAIResponse.id = "current-ai-response";
+              transcriptsDiv.appendChild(currentAIResponse);
               transcriptsDiv.scrollTop = transcriptsDiv.scrollHeight;
               break;
 
+            case "llm_text_chunk":
+              // Handle streaming text from LLM
+              if (currentAIResponse) {
+                const currentText = currentAIResponse.textContent;
+                if (currentText === "🤖 AI: ") {
+                  currentAIResponse.textContent = "🤖 AI: " + data.text;
+                } else {
+                  currentAIResponse.textContent += data.text;
+                }
+                transcriptsDiv.scrollTop = transcriptsDiv.scrollHeight;
+              }
+              console.log("📝 LLM text chunk:", data.text);
+              break;
+
+            case "llm_response_complete":
+              console.log("✅ LLM text response completed");
+              if (currentAIResponse) {
+                // Add a visual indicator that audio is being generated
+                const audioIndicator = document.createElement("span");
+                audioIndicator.textContent = " 🎵";
+                audioIndicator.style.opacity = "0.7";
+                audioIndicator.id = "audio-generation-indicator";
+                currentAIResponse.appendChild(audioIndicator);
+              }
+              break;
+
             case "audio_chunk":
-              // Receive audio chunk and queue for playback
               const chunkSize = estimateAudioSize(data.chunk);
               audioChunks.push(data.chunk);
               totalAudioSize += chunkSize;
 
-              console.log(`🔊 Audio chunk ${data.chunk_number} received and queued for playback`);
+              console.log(`🔊 Audio chunk ${data.chunk_number} received (${(chunkSize/1024).toFixed(2)}KB)`);
 
               // Queue audio chunk for immediate playback
               queueAudioChunk(data.chunk, data.chunk_number);
 
               updateAudioStats();
-              chatStatus.textContent = `🔊 Playing audio... (${audioChunks.length} chunks received)`;
+              chatStatus.textContent = `🔊 Streaming audio... (${audioChunks.length} chunks)`;
+              chatStatus.setAttribute('data-status', 'playing');
               break;
 
             case "audio_complete":
               console.log("✅ Audio streaming completed:", {
                 totalChunks: data.total_chunks,
                 receivedChunks: audioChunks.length,
-                totalSize: `${(totalAudioSize / 1024).toFixed(2)} KB`,
-                message: data.message
+                totalSize: `${(totalAudioSize / 1024).toFixed(2)} KB`
               });
 
-              chatStatus.textContent = `✅ Audio streaming complete! Playing ${audioQueue.length} chunks...`;
+              chatStatus.textContent = `✅ Audio complete! Playing ${audioQueue.filter(c => !c.played).length} remaining chunks...`;
+              chatStatus.removeAttribute('data-status');
 
-              // Update AI response indicator to show completion
-              const aiIndicator = document.getElementById("ai-response-indicator");
-              if (aiIndicator) {
-                aiIndicator.textContent = "🤖 AI: [Audio Response Playing]";
+              // Remove audio generation indicator and add playing indicator
+              if (currentAIResponse) {
+                const audioGenIndicator = document.getElementById("audio-generation-indicator");
+                if (audioGenIndicator) {
+                  audioGenIndicator.remove();
+                }
+
+                // Add playing indicator
+                const playingIndicator = document.createElement("span");
+                playingIndicator.textContent = " 🔊";
+                playingIndicator.id = "audio-playing-indicator";
+                playingIndicator.style.animation = "audioIndicator 1s ease-in-out infinite";
+                currentAIResponse.appendChild(playingIndicator);
               }
               break;
 
@@ -324,7 +851,7 @@
               break;
 
             case "error":
-              console.error("❌ Error:", data.message);
+              console.error("❌ Server Error:", data.message);
               chatStatus.textContent = `❌ Error: ${data.message}`;
               break;
 
@@ -336,7 +863,6 @@
         ws.onclose = () => {
           chatStatus.textContent = "🔴 Streaming stopped.";
           console.log("WebSocket closed");
-          console.log("Final audio data accumulated:", audioChunks.length, "chunks");
         };
 
         ws.onerror = (error) => {
@@ -345,13 +871,13 @@
         };
 
       } catch (err) {
-        console.error("Microphone error:", err);
-        chatStatus.textContent = "❌ Microphone access denied.";
+        console.error("Recording error:", err);
+        chatStatus.textContent = "❌ Failed to start recording.";
       }
     }
 
     function stopRecording() {
-      if (processor) {
+      if (processor && source && audioContext) {
         processor.disconnect();
         source.disconnect();
         audioContext.close();
@@ -366,10 +892,10 @@
     // Initialize the application
     document.addEventListener('DOMContentLoaded', () => {
       initializeAudioPlayerPool();
-      console.log(`🎵 Audio player pool initialized with ${maxPlayers} players`);
+      console.log('🚀 AI Voice Agent initialized and ready!');
     });
 
-    // Toggle record button
+    // Enhanced record button with better feedback
     recordBtn.addEventListener("click", () => {
       recordBtn.classList.add("clicked");
       setTimeout(() => recordBtn.classList.remove("clicked"), 200);
@@ -383,9 +909,12 @@
       }
     });
 
-    // Clean up on page unload
+    // Enhanced cleanup on page unload
     window.addEventListener('beforeunload', () => {
       clearAudioQueue();
+      if (audioContext && audioContext.state !== 'closed') {
+        audioContext.close();
+      }
     });
   </script>
 </body>
