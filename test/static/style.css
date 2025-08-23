@@ -13,7 +13,7 @@ body {
 /* ========================= Wrapper / Center Content ========================= */
 .wrapper {
     text-align: center;
-    max-width: 500px;
+    max-width: 600px;
     width: 100%;
     padding: 20px;
 }
@@ -105,10 +105,60 @@ h1 {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* ========================= Audio Status Display ========================= */
+.audio-status {
+    background: rgba(255, 255, 255, 0.06);
+    padding: 15px;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    margin-top: 20px;
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);
+}
+
+.audio-status p {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #FFD700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.audio-status span {
+    font-weight: bold;
+    color: #ffffff;
+    background: rgba(255, 215, 0, 0.15);
+    padding: 2px 8px;
+    border-radius: 6px;
+    min-width: 60px;
+    text-align: center;
+}
+
 /* ========================= Audio Player ========================= */
 audio {
     margin-top: 10px;
     width: 100%;
     border-radius: 10px;
     outline: none;
+}
+
+/* ========================= Responsive Design ========================= */
+@media (max-width: 768px) {
+    .wrapper {
+        max-width: 90%;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    .mic-btn {
+        width: 100px;
+        height: 100px;
+    }
+
+    .mic-icon {
+        font-size: 2rem;
+    }
 }
