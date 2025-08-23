@@ -1,0 +1,342 @@
+/* ========================= Modern Glassmorphism Background ========================= */
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0b2a55, #133b73);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: white;
+}
+
+/* ========================= Wrapper / Center Content ========================= */
+.wrapper {
+    text-align: center;
+    max-width: 600px;
+    width: 100%;
+    padding: 20px;
+}
+
+/* ========================= Heading ========================= */
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    color: #FFD700;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+}
+
+/* ========================= Mic Button ========================= */
+.mic-btn {
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 215, 0, 0.15);
+    border-radius: 50%;
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 30px auto;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 8px 20px rgba(255, 215, 0, 0.4);
+    position: relative;
+}
+
+.mic-btn:hover {
+    transform: scale(1.05);
+}
+
+.mic-btn.clicked {
+    transform: scale(0.95);
+}
+
+.mic-icon {
+    font-size: 2.5rem;
+    transition: color 0.2s ease;
+}
+
+/* Recording Animation */
+.mic-btn.recording {
+    animation: pulse 1.5s infinite;
+    background: rgba(255, 215, 0, 0.3);
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
+    70% { box-shadow: 0 0 0 25px rgba(255, 215, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+}
+
+/* ========================= Status Text ========================= */
+#chat-status {
+    margin: 15px 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #FFD700;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+    min-height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Status Animation for Audio Playback */
+#chat-status[data-status="playing"] {
+    animation: audioWave 2s ease-in-out infinite;
+}
+
+@keyframes audioWave {
+    0%, 100% { color: #FFD700; }
+    25% { color: #FFA500; }
+    50% { color: #FF8C00; }
+    75% { color: #FFA500; }
+}
+
+/* ========================= Transcription Output (Response Box) ========================= */
+.response-box {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 20px;
+    border-radius: 15px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.15);
+    text-align: left;
+    color: white !important;
+    margin-top: 20px;
+    font-size: 18px;
+    max-height: 250px;
+    overflow-y: auto;
+    word-wrap: break-word;
+    line-height: 1.6;
+    scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for response box */
+.response-box::-webkit-scrollbar {
+    width: 6px;
+}
+
+.response-box::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.response-box::-webkit-scrollbar-thumb {
+    background: rgba(255, 215, 0, 0.5);
+    border-radius: 3px;
+}
+
+.response-box::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 215, 0, 0.7);
+}
+
+/* Style individual transcripts */
+.response-box p {
+    margin: 12px 0;
+    padding: 10px 15px;
+    border-radius: 10px;
+    font-size: 16px;
+    animation: fadeIn 0.4s ease-in-out;
+    position: relative;
+}
+
+/* User message styling */
+.response-box p:not(#ai-response-indicator):not([style*="color"]) {
+    background: rgba(100, 149, 237, 0.15);
+    border-left: 4px solid #6495ED;
+    color: #E6F3FF;
+}
+
+/* AI response styling */
+.response-box p[style*="color"] {
+    background: rgba(255, 215, 0, 0.15);
+    border-left: 4px solid #FFD700;
+    color: #FFD700 !important;
+    position: relative;
+}
+
+/* Audio playing indicator */
+.response-box p[style*="color"]:after {
+    content: "🔊";
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    animation: audioIndicator 1s ease-in-out infinite;
+}
+
+@keyframes audioIndicator {
+    0%, 100% { opacity: 0.5; transform: translateY(-50%) scale(1); }
+    50% { opacity: 1; transform: translateY(-50%) scale(1.1); }
+}
+
+/* Fade-in effect for new transcripts */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========================= Audio Status Display ========================= */
+.audio-status {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 18px;
+    border-radius: 15px;
+    backdrop-filter: blur(12px);
+    margin-top: 20px;
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.audio-status:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-2px);
+}
+
+.audio-status p {
+    margin: 10px 0;
+    font-size: 14px;
+    color: #FFD700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0;
+}
+
+.audio-status span {
+    font-weight: bold;
+    color: #ffffff;
+    background: rgba(255, 215, 0, 0.2);
+    padding: 4px 12px;
+    border-radius: 8px;
+    min-width: 70px;
+    text-align: center;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+/* Playback status specific styling */
+#playback-status {
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#playback-status[data-status="playing"] {
+    background: rgba(0, 255, 0, 0.2) !important;
+    color: #00FF00 !important;
+    border-color: rgba(0, 255, 0, 0.5) !important;
+    animation: playingGlow 2s ease-in-out infinite;
+}
+
+@keyframes playingGlow {
+    0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 0, 0.3); }
+    50% { box-shadow: 0 0 15px rgba(0, 255, 0, 0.6); }
+}
+
+#queue-length {
+    background: rgba(255, 165, 0, 0.2) !important;
+    color: #FFA500 !important;
+    border-color: rgba(255, 165, 0, 0.5) !important;
+}
+
+/* ========================= Hidden Audio Players ========================= */
+#audio-players {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+}
+
+/* ========================= Loading Indicators ========================= */
+.loading-dots {
+    display: inline-block;
+    position: relative;
+    width: 80px;
+    height: 20px;
+}
+
+.loading-dots div {
+    position: absolute;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #FFD700;
+    animation: loading-dots 1.2s linear infinite;
+}
+
+.loading-dots div:nth-child(1) { left: 8px; animation-delay: 0s; }
+.loading-dots div:nth-child(2) { left: 30px; animation-delay: -0.4s; }
+.loading-dots div:nth-child(3) { left: 52px; animation-delay: -0.8s; }
+
+@keyframes loading-dots {
+    0%, 80%, 100% {
+        transform: translateY(-50%) scale(0);
+    }
+    40% {
+        transform: translateY(-50%) scale(1);
+    }
+}
+
+/* ========================= Responsive Design ========================= */
+@media (max-width: 768px) {
+    .wrapper {
+        max-width: 90%;
+        padding: 15px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    .mic-btn {
+        width: 100px;
+        height: 100px;
+    }
+
+    .mic-icon {
+        font-size: 2rem;
+    }
+
+    .response-box {
+        max-height: 200px;
+        padding: 15px;
+        font-size: 16px;
+    }
+
+    .audio-status {
+        padding: 15px;
+    }
+
+    .audio-status p {
+        font-size: 13px;
+        flex-direction: column;
+        text-align: center;
+        gap: 5px;
+    }
+
+    .audio-status span {
+        min-width: auto;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    .mic-btn {
+        width: 90px;
+        height: 90px;
+    }
+
+    .mic-icon {
+        font-size: 1.8rem;
+    }
+
+    .response-box p {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+}

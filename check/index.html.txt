@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Voice Agent - Streaming</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="wrapper">
+    <h1>AI Voice Agent - Streaming Audio</h1>
+
+    <!-- Mic Button -->
+    <div class="mic-btn" id="record-btn">
+      <span class="mic-icon">🎙️</span>
+    </div>
+
+    <!-- Status -->
+    <p id="chat-status">Press the button to start streaming</p>
+
+    <!-- Response / Transcript Output -->
+    <div id="transcripts" class="response-box"></div>
+
+    <!-- Audio Status Display -->
+    <div id="audio-status" class="audio-status">
+      <p>Audio chunks received: <span id="chunk-count">0</span></p>
+      <p>Total audio data: <span id="audio-size">0</span> KB</p>
+      <p>Audio queue length: <span id="queue-length">0</span></p>
+      <p>Playback status: <span id="playback-status">Idle</span></p>
+    </div>
+
+    <!-- Hidden audio elements for seamless playback -->
+    <div id="audio-players" style="display: none;"></div>
+  </div>
+
+  <script>
+    let ws, audioContext, source, processor;
+    let audioChunks = [];
+    let audioQueue = [];
+    let totalChunks = 0;
+    let totalAudioSize = 0;
+    let isPlaying = false;
+    let currentAudioIndex = 0;
+    let audioPlayerPool = [];
+    let maxPlayers = 10;
+
+    const recordBtn = document.getElementById("record-btn");
+    const chatStatus = document.getElementById("chat-status");
+    const transcriptsDiv = document.getElementById("transcripts");
+    const chunkCountSpan = document.getElementById("chunk-count");
+    const audioSizeSpan = document.getElementById("audio-size");
+    const queueLengthSpan = document.getElementById("queue-length");
+    const playbackStatusSpan = document.getElementById("playback-status");
+    const audioPlayersDiv = document.getElementById("audio-players");
+
+    // Initialize audio player pool
+    function initializeAudioPlayerPool() {
+      for (let i = 0; i < maxPlayers; i++) {
+        const audio = document.createElement('audio');
+        audio.preload = 'auto';
+        audio.style.display = 'none';
+        audioPlayersDiv.appendChild(audio);
+        audioPlayerPool.push({
+          element: audio,
+          inUse: false,
+          index: i
+        });
+      }
+    }
+
+    // Get available audio player from pool
+    function getAvailablePlayer() {
+      return audioPlayerPool.find(player => !player.inUse);
+    }
+
+    // Release audio player back to pool
+    function releasePlayer(player) {
+      player.inUse = false;
+      player.element.src = '';
+      player.element.removeEventListener('ended', player.endHandler);
+      player.element.removeEventListener('error', player.errorHandler);
+    }
+
+    // Convert base64 to blob URL
+    function base64ToBlob(base64, mimeType = 'audio/wav') {
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: mimeType });
+      return URL.createObjectURL(blob);
+    }
+
+    // Queue audio chunk for playback
+    function queueAudioChunk(base64Audio, chunkNumber) {
+      try {
+        const audioUrl = base64ToBlob(base64Audio);
+        audioQueue.push({
+          url: audioUrl,
+          chunkNumber: chunkNumber,
+          played: false
+        });
+
+        updateQueueStatus();
+
+        // Start playback if not already playing
+        if (!isPlaying) {
+          playNextAudioChunk();
+        }
+      } catch (error) {
+        console.error('Error queuing audio chunk:', error);
+      }
+    }
+
+    // Play next audio chunk in queue
+    function playNextAudioChunk() {
+      if (audioQueue.length === 0) {
+        isPlaying = false;
+        playbackStatusSpan.textContent = "Idle";
+        return;
+      }
+
+      const nextChunk = audioQueue.find(chunk => !chunk.played);
+      if (!nextChunk) {
+        isPlaying = false;
+        playbackStatusSpan.textContent = "Complete";
+        return;
+      }
+
+      const player = getAvailablePlayer();
+      if (!player) {
+        console.warn('No available audio players, waiting...');
+        setTimeout(() => playNextAudioChunk(), 100);
+        return;
+      }
+
+      isPlaying = true;
+      player.inUse = true;
+      playbackStatusSpan.textContent = `Playing chunk ${nextChunk.chunkNumber}`;
+
+      // Set up event handlers
+      player.endHandler = () => {
+        console.log(`✅ Finished playing chunk ${nextChunk.chunkNumber}`);
+        nextChunk.played = true;
+        releasePlayer(player);
+        URL.revokeObjectURL(nextChunk.url); // Clean up blob URL
+        updateQueueStatus();
+
+        // Play next chunk with minimal delay
+        setTimeout(() => playNextAudioChunk(), 10);
+      };
+
+      player.errorHandler = (error) => {
+        console.error(`❌ Error playing chunk ${nextChunk.chunkNumber}:`, error);
+        nextChunk.played = true;
+        releasePlayer(player);
+        URL.revokeObjectURL(nextChunk.url);
+        updateQueueStatus();
+
+        // Continue to next chunk despite error
+        setTimeout(() => playNextAudioChunk(), 50);
+      };
+
+      player.element.addEventListener('ended', player.endHandler);
+      player.element.addEventListener('error', player.errorHandler);
+
+      // Load and play the audio
+      player.element.src = nextChunk.url;
+      player.element.play().catch(error => {
+        console.error(`Failed to play chunk ${nextChunk.chunkNumber}:`, error);
+        player.errorHandler(error);
+      });
+
+      console.log(`🔊 Playing audio chunk ${nextChunk.chunkNumber} on player ${player.index}`);
+    }
+
+    // Update queue status display
+    function updateQueueStatus() {
+      const unplayedChunks = audioQueue.filter(chunk => !chunk.played).length;
+      queueLengthSpan.textContent = unplayedChunks;
+    }
+
+    // Function to update audio statistics
+    function updateAudioStats() {
+      chunkCountSpan.textContent = audioChunks.length;
+      audioSizeSpan.textContent = (totalAudioSize / 1024).toFixed(2);
+    }
+
+    // Function to estimate base64 audio size
+    function estimateAudioSize(base64String) {
+      return (base64String.length * 3) / 4;
+    }
+
+    // Clear audio queue and stop all playback
+    function clearAudioQueue() {
+      // Stop all playing audio
+      audioPlayerPool.forEach(player => {
+        if (player.inUse) {
+          player.element.pause();
+          releasePlayer(player);
+        }
+      });
+
+      // Clean up blob URLs
+      audioQueue.forEach(chunk => {
+        if (chunk.url) {
+          URL.revokeObjectURL(chunk.url);
+        }
+      });
+
+      audioQueue = [];
+      audioChunks = [];
+      totalAudioSize = 0;
+      isPlaying = false;
+      updateAudioStats();
+      updateQueueStatus();
+      playbackStatusSpan.textContent = "Idle";
+    }
+
+    async function startRecording() {
+      try {
+        // Clear previous audio data
+        clearAudioQueue();
+
+        ws = new WebSocket("ws://localhost:8000/ws/audio");
+
+        ws.onopen = async () => {
+          chatStatus.textContent = "🎤 Listening... Speak now!";
+          console.log("Connected to server");
+
+          // Microphone access
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+          source = audioContext.createMediaStreamSource(stream);
+          processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+          processor.onaudioprocess = (event) => {
+            const inputData = event.inputBuffer.getChannelData(0);
+
+            // Convert float32 → int16 PCM
+            const pcmData = new Int16Array(inputData.length);
+            for (let i = 0; i < inputData.length; i++) {
+              const sample = Math.max(-1, Math.min(1, inputData[i]));
+              pcmData[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+            }
+
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(pcmData.buffer);
+            }
+          };
+
+          source.connect(processor);
+          processor.connect(audioContext.destination);
+        };
+
+        // Handle messages from server
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+
+          switch(data.type) {
+            case "transcript":
+              const p = document.createElement("p");
+              p.textContent = `🗣️ You: ${data.text}`;
+              transcriptsDiv.appendChild(p);
+              transcriptsDiv.scrollTop = transcriptsDiv.scrollHeight;
+              break;
+
+            case "llm_response_start":
+              console.log("🤖 LLM Response started");
+              chatStatus.textContent = "🤖 Generating response...";
+
+              // Add AI response indicator
+              const aiP = document.createElement("p");
+              aiP.textContent = "🤖 AI: ";
+              aiP.id = "ai-response-indicator";
+              aiP.style.color = "#FFD700";
+              transcriptsDiv.appendChild(aiP);
+              transcriptsDiv.scrollTop = transcriptsDiv.scrollHeight;
+              break;
+
+            case "audio_chunk":
+              // Receive audio chunk and queue for playback
+              const chunkSize = estimateAudioSize(data.chunk);
+              audioChunks.push(data.chunk);
+              totalAudioSize += chunkSize;
+
+              console.log(`🔊 Audio chunk ${data.chunk_number} received and queued for playback`);
+
+              // Queue audio chunk for immediate playback
+              queueAudioChunk(data.chunk, data.chunk_number);
+
+              updateAudioStats();
+              chatStatus.textContent = `🔊 Playing audio... (${audioChunks.length} chunks received)`;
+              break;
+
+            case "audio_complete":
+              console.log("✅ Audio streaming completed:", {
+                totalChunks: data.total_chunks,
+                receivedChunks: audioChunks.length,
+                totalSize: `${(totalAudioSize / 1024).toFixed(2)} KB`,
+                message: data.message
+              });
+
+              chatStatus.textContent = `✅ Audio streaming complete! Playing ${audioQueue.length} chunks...`;
+
+              // Update AI response indicator to show completion
+              const aiIndicator = document.getElementById("ai-response-indicator");
+              if (aiIndicator) {
+                aiIndicator.textContent = "🤖 AI: [Audio Response Playing]";
+              }
+              break;
+
+            case "session":
+              console.log("📡 Session:", data.message);
+              break;
+
+            case "end_of_turn":
+              console.log("🔄 End of turn detected");
+              break;
+
+            case "termination":
+              console.log("🛑 Session terminated:", data.message);
+              break;
+
+            case "error":
+              console.error("❌ Error:", data.message);
+              chatStatus.textContent = `❌ Error: ${data.message}`;
+              break;
+
+            default:
+              console.log("📝 Unknown message type:", data);
+          }
+        };
+
+        ws.onclose = () => {
+          chatStatus.textContent = "🔴 Streaming stopped.";
+          console.log("WebSocket closed");
+          console.log("Final audio data accumulated:", audioChunks.length, "chunks");
+        };
+
+        ws.onerror = (error) => {
+          console.error("WebSocket error:", error);
+          chatStatus.textContent = "❌ Connection error.";
+        };
+
+      } catch (err) {
+        console.error("Microphone error:", err);
+        chatStatus.textContent = "❌ Microphone access denied.";
+      }
+    }
+
+    function stopRecording() {
+      if (processor) {
+        processor.disconnect();
+        source.disconnect();
+        audioContext.close();
+        chatStatus.textContent = "⏹️ Stopping recording...";
+      }
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send("EOF");
+        ws.close();
+      }
+    }
+
+    // Initialize the application
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeAudioPlayerPool();
+      console.log(`🎵 Audio player pool initialized with ${maxPlayers} players`);
+    });
+
+    // Toggle record button
+    recordBtn.addEventListener("click", () => {
+      recordBtn.classList.add("clicked");
+      setTimeout(() => recordBtn.classList.remove("clicked"), 200);
+
+      if (!recordBtn.classList.contains("recording")) {
+        startRecording();
+        recordBtn.classList.add("recording");
+      } else {
+        stopRecording();
+        recordBtn.classList.remove("recording");
+      }
+    });
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+      clearAudioQueue();
+    });
+  </script>
+</body>
+</html>
