@@ -42,8 +42,9 @@ BASE_DIR = Path(__file__).resolve().parent
 UPLOADS_DIR = BASE_DIR / "Uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
 
-# Initialize LLMService globally
-llm_service = LLMService()
+# Global WebSocket connection storage
+active_websockets = {}
+
 
 # WebSocket Audio Streaming with AssemblyAI Transcription
 @app.websocket("/ws/audio")
@@ -52,6 +53,13 @@ async def websocket_audio(websocket: WebSocket):
     await websocket.accept()
     file_id = uuid4().hex
     file_path = UPLOADS_DIR / f"streamed_{file_id}.pcm"
+
+    # Store WebSocket connection for audio streaming
+    connection_id = uuid4().hex
+    active_websockets[connection_id] = websocket
+
+    # Initialize LLMService with WebSocket connection
+    llm_service = LLMService(websocket)
 
     # Initialize AssemblyAI StreamingClient
     client = StreamingClient(
@@ -100,8 +108,8 @@ async def websocket_audio(websocket: WebSocket):
                 )
             except TimeoutError:
                 pass
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Error in on_turn handler: {str(e)}")
 
     def on_terminated(_: Type[StreamingClient], event: TerminationEvent):
         try:
@@ -157,8 +165,12 @@ async def websocket_audio(websocket: WebSocket):
         except:
             pass
     finally:
+        # Clean up WebSocket connection
+        if connection_id in active_websockets:
+            del active_websockets[connection_id]
         client.disconnect(terminate=True)
         await websocket.close()
+
 
 # Health Check
 @app.get("/health")
@@ -169,9 +181,11 @@ async def health_check():
         "endpoints": ["/ws/audio"],
     }
 
+
 # App Initialization
 app.mount("/", StaticFiles(directory=BASE_DIR / "static", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
