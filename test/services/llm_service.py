@@ -17,10 +17,11 @@ load_dotenv()
 
 
 class LLMService:
-    def __init__(self):
+    def __init__(self, client_websocket=None):
         self.api_key = os.getenv("GEMINI_API_KEY")
         self.murf_api_key = os.getenv("MURF_API_KEY")
         self.context_id = "day20-static-context"  # Static context_id for Murf to avoid context limit errors
+        self.client_websocket = client_websocket  # WebSocket connection to client
         if not self.api_key:
             logger.warning("GEMINI_API_KEY not found in .env file.")
             raise ValueError("Gemini API key is missing.")
@@ -29,6 +30,20 @@ class LLMService:
             raise ValueError("Murf API key is missing.")
         genai.configure(api_key=self.api_key)
 
+    async def send_audio_to_client(self, audio_chunk: str, chunk_number: int):
+        """Send base64 audio chunk to client via WebSocket."""
+        if self.client_websocket:
+            try:
+                message = {
+                    "type": "audio_chunk",
+                    "chunk": audio_chunk,
+                    "chunk_number": chunk_number
+                }
+                await self.client_websocket.send_json(message)
+                #logger.info(f"Sent audio chunk {chunk_number} to client")
+            except Exception as e:
+                logger.error(f"Error sending audio chunk to client: {str(e)}")
+
     async def receive_loop(self, ws):
         audio_chunks = []
         chunk_count = 1
@@ -36,7 +51,6 @@ class LLMService:
             while True:
                 response = await ws.recv()
                 data = json.loads(response)
-                #logger.info(f"Murf response: {json.dumps(data, indent=2)}")
                 if "audio" in data and data["audio"]:
                     base64_chunk = data["audio"]
                     max_len = 64
@@ -45,10 +59,25 @@ class LLMService:
                     else:
                         truncated_chunk = base64_chunk
                     print(f"[murf ai][chunk {chunk_count}] {truncated_chunk}")
+
+                    # Send audio chunk to client immediately
+                    await self.send_audio_to_client(base64_chunk, chunk_count)
+
                     audio_chunks.append(base64_chunk)
                     chunk_count += 1
                 if data.get("final"):
                     logger.info("Murf confirms final audio chunk received.")
+                    # Send final message to client
+                    if self.client_websocket:
+                        try:
+                            final_message = {
+                                "type": "audio_complete",
+                                "total_chunks": len(audio_chunks),
+                                "message": "Audio streaming completed"
+                            }
+                            await self.client_websocket.send_json(final_message)
+                        except Exception as e:
+                            logger.error(f"Error sending final message to client: {str(e)}")
                     break
         except websockets.exceptions.ConnectionClosed:
             pass
@@ -57,7 +86,7 @@ class LLMService:
         return audio_chunks
 
     async def stream_llm(self, text: str) -> tuple[str, list]:
-        """Stream response from Gemini LLM, send sentences to Murf via WebSocket, and accumulate response."""
+        """Stream response from Gemini LLM, send sentences to Murf via WebSocket, and stream audio to client."""
         if not self.api_key:
             raise ValueError("Gemini API key is missing.")
         if not text or not text.strip():
@@ -86,6 +115,18 @@ class LLMService:
                 sentence_buffer = ""
                 accumulated_response = ""
                 print("\nGEMINI STREAMING RESPONSE \n")
+
+                # Notify client that LLM response started
+                if self.client_websocket:
+                    try:
+                        start_message = {
+                            "type": "llm_response_start",
+                            "message": "Starting LLM response generation"
+                        }
+                        await self.client_websocket.send_json(start_message)
+                    except Exception as e:
+                        logger.error(f"Error sending start message: {str(e)}")
+
                 for chunk in stream:
                     if chunk.text:
                         accumulated_response += chunk.text
