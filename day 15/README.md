@@ -1,87 +1,66 @@
 
-### Day 18 – Turn Detection
 
-This task focuses on using **AssemblyAI’s streaming API** to detect when a user has finished speaking (turn detection). Once a turn ends, the transcription is finalized and sent to the client over WebSockets. The client displays the transcription in the UI at the end of the turn.
+## Day 15 – WebSocket Connection
 
----
+This task focuses on building a WebSocket connection between the client and server. A WebSocket endpoint was created using FastAPI, and Postman was used as the client to test sending and receiving real-time messages.
 
-#### Task Overview
+### Task Overview
 
-* Enable turn detection with AssemblyAI’s streaming API
-* Detect when the user stops speaking
-* Send a WebSocket message to the client to indicate the end of the turn
-* Display the transcription in the UI at the end of each turn
+* Create a WebSocket endpoint `/ws` on the server
+* Establish a WebSocket connection from the client (Postman)
+* Send messages from client to server
+* Receive echo responses from server in real time
+* Explore real-time communication with WebSockets
 
----
+### How It Works
 
-#### How It Works
+1. Client connects to the server via the WebSocket endpoint `/ws`
+2. Messages are sent from the client (Postman) to the server
+3. Server echoes the received messages back to the client
+4. Real-time communication is established without refreshing or polling
 
-1. User speaks into the microphone
-2. Audio is streamed to AssemblyAI for real-time transcription
-3. AssemblyAI signals when the user has stopped speaking (end of turn)
-4. Backend sends a WebSocket message to the client notifying end of turn
-5. Client displays the transcription on the UI
-
----
-
-#### Tech Stack
+### Tech Stack
 
 * **Backend** – Python (FastAPI)
-* **Streaming & Turn Detection** – AssemblyAI API
-* **Communication** – WebSockets
-* **Frontend** – HTML/JavaScript UI
+* **WebSocket Communication** – FastAPI WebSocket
+* **Client** – Postman WebSocket tester
 * **Runtime** – Uvicorn
 
----
+### Setup Instructions
 
-#### Setup Instructions
-
-1. **Clone Repository**
+**Clone Repository**
 
 ```bash
-git clone https://github.com/chaitravc/day18.git
-cd day18
+git clone https://github.com/chaitravc/day15.git
+cd day15
 ```
 
-2. **Install Dependencies**
+**Install Dependencies**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. **Add Environment Variables**
-   Create a `.env` file in the root directory:
-
-```env
-ASSEMBLYAI_API_KEY=your_assemblyai_api_key
-```
-
-4. **Run Server**
+**Run Server**
 
 ```bash
 uvicorn main:app --reload
 ```
 
-
-
----
-
-#### Dependencies
+### Dependencies
 
 * fastapi
 * uvicorn
-* requests
 * websockets
-* python-dotenv
 
----
+### Notes
 
-#### Notes
+This task demonstrates the basics of WebSocket connections. It shows how to set up a server endpoint, connect a client, and exchange messages in real time.
 
-This task demonstrates **real-time turn detection** with AssemblyAI. It enables smoother conversational flows by signaling when the user has finished speaking and displaying the final transcript in the UI.
+# Output
+<img width="1920" height="1020" alt="Screenshot 2025-08-16 143155" src="https://github.com/user-attachments/assets/c3464920-4d1b-4f3a-868b-d4c1310d87c5" />
+
+<img width="1920" height="1020" alt="Screenshot 2025-08-16 143208" src="https://github.com/user-attachments/assets/27bdc6a2-9975-43cf-8eae-ba012a4d9350" />
 
 
-
-
-https://github.com/user-attachments/assets/9a8a8cf6-1924-4be6-b560-e7498b0f5686
 
