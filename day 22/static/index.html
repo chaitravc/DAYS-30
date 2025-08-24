@@ -1,0 +1,286 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Voice Agent - Streaming</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="wrapper">
+    <h1>AI Voice Agent - Streaming Audio</h1>
+
+    <!-- Mic Button -->
+    <div class="mic-btn" id="record-btn">
+      <span class="mic-icon">🎙️</span>
+    </div>
+
+    <!-- Status -->
+    <p id="chat-status">Press the button to start streaming</p>
+
+    <!-- Response / Transcript Output -->
+    <div id="transcripts" class="response-box"></div>
+
+    <!-- Audio Status Display -->
+    <div id="audio-status" class="audio-status">
+      <p>Audio chunks received: <span id="chunk-count">0</span></p>
+      <p>Total audio data: <span id="audio-size">0</span> KB</p>
+    </div>
+  </div>
+
+  <script>
+  let ws, audioContext, source, processor;
+  let audioChunks = [];
+  let totalChunks = 0;
+  let totalAudioSize = 0;
+  let playheadTime;
+  let isPlaying = false;
+  let wavHeaderReceived = false;
+
+  const recordBtn = document.getElementById("record-btn");
+  const chatStatus = document.getElementById("chat-status");
+  const transcriptsDiv = document.getElementById("transcripts");
+  const chunkCountSpan = document.getElementById("chunk-count");
+  const audioSizeSpan = document.getElementById("audio-size");
+
+  // Function to update audio statistics for SENT audio
+  function updateAudioStats() {
+    chunkCountSpan.textContent = totalChunks;
+    audioSizeSpan.textContent = (totalAudioSize / 1024).toFixed(2);
+  }
+
+  // Function to estimate base64 audio size for RECEIVED audio
+  function estimateAudioSize(base64String) {
+    return (base64String.length * 3) / 4;
+  }
+
+  // --- New Audio Playback Functions ---
+  function base64ToPCMFloat32(base64) {
+    let binary = atob(base64);
+    const offset = wavHeaderReceived ? 44 : 0;
+
+    if (binary.length <= offset) {
+      console.warn("Received empty audio data after header removal.");
+      return null;
+    }
+
+    const length = binary.length - offset;
+    const buffer = new ArrayBuffer(length);
+    const byteArray = new Uint8Array(buffer);
+    for (let i = 0; i < byteArray.length; i++) {
+      byteArray[i] = binary.charCodeAt(i + offset);
+    }
+
+    const view = new DataView(byteArray.buffer);
+    const sampleCount = byteArray.length / 2;
+    const float32Array = new Float32Array(sampleCount);
+
+    for (let i = 0; i < sampleCount; i++) {
+      const int16 = view.getInt16(i * 2, true);
+      float32Array[i] = int16 / 32768; // Convert Int16 to Float32
+    }
+
+    return float32Array;
+  }
+
+  function chunkPlay() {
+    if (audioChunks.length > 0) {
+      const chunk = audioChunks.shift();
+      if (audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+
+      const buffer = audioContext.createBuffer(1, chunk.length, 44100);
+      buffer.copyToChannel(chunk, 0);
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext.destination);
+
+      const now = audioContext.currentTime;
+      if (playheadTime < now) {
+        playheadTime = now + 0.05;
+      }
+
+      source.start(playheadTime);
+      playheadTime += buffer.duration;
+
+      if (audioChunks.length > 0) {
+        chunkPlay();
+      } else {
+        isPlaying = false;
+      }
+    }
+  }
+
+  function playAudioChunk(base64Audio) {
+    try {
+      if (base64Audio && base64Audio.length > 0) {
+        const float32Array = base64ToPCMFloat32(base64Audio);
+        if (!float32Array) return;
+
+        audioChunks.push(float32Array);
+
+        if (!isPlaying) {
+          isPlaying = true;
+          chunkPlay();
+        }
+      }
+    } catch (error) {
+      console.error("Error playing chunk:", error);
+    }
+  }
+  // --- End New Audio Playback Functions ---
+
+  async function startRecording() {
+    try {
+      // Reset audio data for sending
+      totalChunks = 0;
+      totalAudioSize = 0;
+      updateAudioStats();
+
+      // Reset audio data for receiving
+      audioChunks = [];
+      wavHeaderReceived = false;
+
+      ws = new WebSocket("ws://localhost:8000/ws/audio");
+
+      ws.onopen = async () => {
+        chatStatus.textContent = "🎤 Listening... Speak now!";
+        console.log("Connected to server");
+
+        // Initialize Web Audio API for both sending and receiving
+        audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        playheadTime = audioContext.currentTime; // Initialize for playback
+
+        // Microphone access
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        source = audioContext.createMediaStreamSource(stream);
+        processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+        processor.onaudioprocess = (event) => {
+          const inputData = event.inputBuffer.getChannelData(0);
+
+          // Convert float32 → int16 PCM
+          const pcmData = new Int16Array(inputData.length);
+          for (let i = 0; i < inputData.length; i++) {
+            const sample = Math.max(-1, Math.min(1, inputData[i]));
+            pcmData[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+          }
+
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(pcmData.buffer);
+            totalChunks++;
+            totalAudioSize += pcmData.byteLength;
+            updateAudioStats();
+          }
+        };
+
+        source.connect(processor);
+        processor.connect(audioContext.destination);
+      };
+
+      // Handle messages from server
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        switch(data.type) {
+          case "transcript":
+            const p = document.createElement("p");
+            p.textContent = ` ${data.text}`;
+            transcriptsDiv.appendChild(p);
+            transcriptsDiv.scrollTop = transcriptsDiv.scrollHeight;
+            break;
+
+          case "llm_response_start":
+            console.log("🤖 LLM Response started");
+            chatStatus.textContent = "🤖 Generating response...";
+            break;
+
+          case "audio_chunk":
+            // --- New Feature: Play the incoming audio chunk ---
+            if (!wavHeaderReceived) {
+              wavHeaderReceived = true;
+            }
+            playAudioChunk(data.chunk);
+
+            console.log(`🔊 Audio chunk received and playing:`, {
+              chunkNumber: data.chunk_number,
+              base64Length: data.chunk.length,
+            });
+            chatStatus.textContent = `🔊 Receiving and playing audio...`;
+            break;
+
+          case "audio_complete":
+            console.log("✅ Audio streaming completed.");
+            chatStatus.textContent = `✅ Audio complete!`;
+            break;
+
+          case "session":
+            console.log("📡 Session:", data.message);
+            break;
+
+          case "end_of_turn":
+            console.log("🔄 End of turn detected");
+            break;
+
+          case "termination":
+            console.log("🛑 Session terminated:", data.message);
+            break;
+
+          case "error":
+            console.error("❌ Error:", data.message);
+            chatStatus.textContent = `❌ Error: ${data.message}`;
+            break;
+
+          default:
+            console.log("📝 Unknown message type:", data);
+        }
+      };
+
+      ws.onclose = () => {
+        chatStatus.textContent = "🔴 Streaming stopped.";
+        console.log("WebSocket closed");
+        console.log("Final audio data sent:", totalChunks, "chunks");
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        chatStatus.textContent = "❌ Connection error.";
+      };
+
+    } catch (err) {
+      console.error("Microphone error:", err);
+      chatStatus.textContent = "❌ Microphone access denied.";
+    }
+  }
+
+  function stopRecording() {
+    if (processor) {
+      processor.disconnect();
+      source.disconnect();
+      audioContext.close();
+      chatStatus.textContent = "⏹️ Stopping recording...";
+    }
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send("EOF");
+      ws.close();
+    }
+  }
+
+  // Toggle record button
+  recordBtn.addEventListener("click", () => {
+    recordBtn.classList.add("clicked");
+    setTimeout(() => recordBtn.classList.remove("clicked"), 200);
+
+    if (!recordBtn.classList.contains("recording")) {
+      startRecording();
+      recordBtn.classList.add("recording");
+    } else {
+      stopRecording();
+      recordBtn.classList.remove("recording");
+    }
+  });
+</script>
+</body>
+</html>
