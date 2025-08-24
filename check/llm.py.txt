@@ -30,19 +30,30 @@ class LLMService:
             raise ValueError("Murf API key is missing.")
         genai.configure(api_key=self.api_key)
 
-    async def send_audio_to_client(self, audio_chunk: str, chunk_number: int):
-        """Send base64 audio chunk to client via WebSocket."""
+    async def send_to_client(self, message_type: str, data: dict):
+        """Send message to client via WebSocket."""
         if self.client_websocket:
             try:
                 message = {
-                    "type": "audio_chunk",
-                    "chunk": audio_chunk,
-                    "chunk_number": chunk_number
+                    "type": message_type,
+                    **data
                 }
                 await self.client_websocket.send_json(message)
-                #logger.info(f"Sent audio chunk {chunk_number} to client")
             except Exception as e:
-                logger.error(f"Error sending audio chunk to client: {str(e)}")
+                logger.error(f"Error sending {message_type} to client: {str(e)}")
+
+    async def send_audio_to_client(self, audio_chunk: str, chunk_number: int):
+        """Send base64 audio chunk to client via WebSocket."""
+        await self.send_to_client("audio_chunk", {
+            "chunk": audio_chunk,
+            "chunk_number": chunk_number
+        })
+
+    async def send_text_to_client(self, text_chunk: str):
+        """Send LLM text chunk to client via WebSocket."""
+        await self.send_to_client("llm_text_chunk", {
+            "text": text_chunk
+        })
 
     async def receive_loop(self, ws):
         audio_chunks = []
@@ -68,16 +79,10 @@ class LLMService:
                 if data.get("final"):
                     logger.info("Murf confirms final audio chunk received.")
                     # Send final message to client
-                    if self.client_websocket:
-                        try:
-                            final_message = {
-                                "type": "audio_complete",
-                                "total_chunks": len(audio_chunks),
-                                "message": "Audio streaming completed"
-                            }
-                            await self.client_websocket.send_json(final_message)
-                        except Exception as e:
-                            logger.error(f"Error sending final message to client: {str(e)}")
+                    await self.send_to_client("audio_complete", {
+                        "total_chunks": len(audio_chunks),
+                        "message": "Audio streaming completed"
+                    })
                     break
         except websockets.exceptions.ConnectionClosed:
             pass
@@ -93,6 +98,7 @@ class LLMService:
             logger.warning("Empty text received, skipping Gemini and Murf.")
             return "", []
         try:
+            # Connect to Murf WebSocket
             uri = (
                 f"wss://api.murf.ai/v1/speech/stream-input"
                 f"?api-key={self.murf_api_key}"
@@ -101,6 +107,7 @@ class LLMService:
                 f"&format=WAV"
             )
             async with websockets.connect(uri) as ws:
+                # Send voice configuration to Murf
                 voice_config = {
                     "context_id": self.context_id,
                     "voice_config": {
@@ -109,30 +116,34 @@ class LLMService:
                     }
                 }
                 await ws.send(json.dumps(voice_config))
+
+                # Start audio receiver task
                 receiver_task = asyncio.create_task(self.receive_loop(ws))
+
+                # Initialize Gemini model and start streaming
                 model = genai.GenerativeModel("gemini-1.5-flash")
                 stream = model.generate_content(text, stream=True)
+
                 sentence_buffer = ""
                 accumulated_response = ""
                 print("\nGEMINI STREAMING RESPONSE \n")
 
                 # Notify client that LLM response started
-                if self.client_websocket:
-                    try:
-                        start_message = {
-                            "type": "llm_response_start",
-                            "message": "Starting LLM response generation"
-                        }
-                        await self.client_websocket.send_json(start_message)
-                    except Exception as e:
-                        logger.error(f"Error sending start message: {str(e)}")
+                await self.send_to_client("llm_response_start", {
+                    "message": "Starting LLM response generation"
+                })
 
+                # Stream LLM response text to client in real-time
                 for chunk in stream:
                     if chunk.text:
                         accumulated_response += chunk.text
                         sentence_buffer += chunk.text
                         print(chunk.text, end="", flush=True)
 
+                        # Send text chunk to client immediately
+                        await self.send_text_to_client(chunk.text)
+
+                    # Process complete sentences for Murf TTS
                     sentences = re.split(r'(?<=[.?!])\s+', sentence_buffer)
 
                     if len(sentences) > 1:
@@ -146,6 +157,7 @@ class LLMService:
                                 await ws.send(json.dumps(text_msg))
                         sentence_buffer = sentences[-1]
 
+                # Send remaining text to Murf
                 if sentence_buffer.strip():
                     text_msg = {
                         "context_id": self.context_id,
@@ -156,21 +168,32 @@ class LLMService:
 
                 print("\nEND OF GEMINI STREAM \n")
 
+                # Notify client that LLM text response is complete
+                await self.send_to_client("llm_response_complete", {
+                    "message": "LLM text response completed, generating audio..."
+                })
+
+                # Wait for all audio chunks
                 audio_chunks = await receiver_task
 
                 if not accumulated_response:
                     raise ValueError("No response from Gemini LLM stream.")
 
                 return accumulated_response, audio_chunks
+
         except genai.types.generation_types.BlockedPromptException as e:
             logger.error(f"Gemini blocked prompt: {str(e)}")
+            await self.send_to_client("error", {"message": f"Content blocked: {str(e)}"})
             raise
         except genai.types.generation_types.StopCandidateException as e:
             logger.error(f"Gemini stopped generation: {str(e)}")
+            await self.send_to_client("error", {"message": f"Generation stopped: {str(e)}"})
             raise
         except websockets.exceptions.ConnectionClosed as e:
             logger.error(f"Murf WebSocket closed: {str(e)}")
+            await self.send_to_client("error", {"message": "Audio service disconnected"})
             raise
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
+            await self.send_to_client("error", {"message": f"Service error: {str(e)}"})
             raise
