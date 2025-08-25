@@ -1,0 +1,154 @@
+/* ========================= Modern Glassmorphism Background ========================= */
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0b2a55, #133b73); /* Blue gradient background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: white;
+}
+
+/* ========================= Chat Container ========================= */
+.chat-container {
+    text-align: center;
+    max-width: 600px;
+    width: 100%;
+    padding: 20px;
+}
+
+/* ========================= Header ========================= */
+.chat-header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 5px;
+    color: #FFD700; /* Yellow accent */
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.9),
+                 0 0 35px rgba(255, 215, 0, 0.7),
+                 0 0 60px rgba(255, 215, 0, 0.5); /* Glow effect */
+    background: rgba(255, 215, 0, 0.1);
+    padding: 10px 20px;
+    border-radius: 12px;
+    display: inline-block;
+    backdrop-filter: blur(6px);
+}
+
+/* ========================= Subtitle ========================= */
+.assistant-subtitle {
+    color: white;
+    font-size: 1.4rem;
+    font-weight: 600;
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.9),
+                 0 0 20px rgba(255, 255, 255, 0.7),
+                 0 0 35px rgba(255, 255, 255, 0.5);
+}
+
+/* ========================= Chat Log ========================= */
+.chat-log {
+    background: rgba(255, 255, 255, 0.08); /* Glass effect */
+    padding: 20px;
+    border-radius: 15px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.15);
+    text-align: left;
+    color: white;
+    margin-top: 20px;
+    font-size: 18px;
+    max-height: 220px;
+    overflow-y: auto;
+    word-wrap: break-word;
+    line-height: 1.5;
+}
+
+/* Style for each chat message */
+.chat-log p {
+    margin: 8px 0;
+    padding: 8px 12px;
+    background: rgba(255, 215, 0, 0.1);
+    border-left: 4px solid #FFD700;
+    border-radius: 8px;
+    font-size: 16px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========================= Mic Button ========================= */
+.record-btn {
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 215, 0, 0.15);
+    border-radius: 50%;
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 30px auto 15px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    box-shadow: 0 8px 20px rgba(255, 215, 0, 0.4);
+    border: none;
+    color: white;
+}
+
+/* Make SVG mic bold & glowing */
+.record-btn svg {
+    filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.9));
+    width: 40px;
+    height: 40px;
+    stroke-width: 1.5px;
+    fill: #FFD700;
+}
+
+.record-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Recording animation */
+.record-btn.recording {
+    animation: pulse 1.5s infinite;
+    background: rgba(255, 215, 0, 0.3);
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
+    70% { box-shadow: 0 0 0 25px rgba(255, 215, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+}
+
+/* ========================= Status Display ========================= */
+#statusDisplay {
+    margin-top: 10px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #FFD700; /* Yellow accent */
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+}
+
+/* ========================= Responsive Design ========================= */
+@media (max-width: 768px) {
+    .chat-container {
+        max-width: 90%;
+    }
+
+    .chat-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .assistant-subtitle {
+        font-size: 1.1rem;
+    }
+
+    .record-btn {
+        width: 100px;
+        height: 100px;
+    }
+
+    .record-btn svg {
+        width: 30px;
+        height: 30px;
+    }
+}
