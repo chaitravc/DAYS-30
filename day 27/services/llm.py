@@ -1,12 +1,21 @@
 # services/llm.py
 
 import google.generativeai as genai
+import os
 from typing import List, Dict, Any, Tuple
 from . import news  # Import the news service
-import config
+
+# Configure logging
 import logging
 
 logger = logging.getLogger(__name__)
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+else:
+    print("Warning: GEMINI_API_KEY not found in .env file.")
 
 system_instructions = """
 You are Masha from the cartoon 'Masha and the Bear'. You are a very curious, energetic, and playful little girl.
@@ -24,35 +33,43 @@ Rules:
 - When sharing news, make it sound exciting and interesting like you just heard it from a friend!
 - If you have current news information, share it enthusiastically but in simple terms.
 - Talk little bit fast
-Goal: Help the user with their questions...
+Goal: Help the user with their questions while staying in character as Masha.
 """
 
 
-def get_llm_response(query: str, history: List[Dict[str, Any]]) -> Tuple[str, List[Dict[str, Any]]]:
-    """
-    Get a streaming text response from the LLM, formatted as sentences.
-    """
+def get_llm_response(user_query: str, history: List[Dict[str, Any]]) -> Tuple[str, List[Dict[str, Any]]]:
+    """Gets a response from the Gemini LLM and updates chat history."""
     try:
-        if not config.GEMINI_API_KEY:
-            logger.error("GEMINI_API_KEY is not configured.")
-            return "Oh no! It seems I forgot my magic words. I can't talk without my key!", history
+        # Check if user is asking for news
+        enhanced_query = user_query
 
-        # Configure the model with the API key from config
-        genai.configure(api_key=config.GEMINI_API_KEY)
+        if news.should_fetch_news(user_query):
+            logger.info("User query detected as news-related, fetching latest news...")
 
-        enhanced_query = query
-        # Fetch news if the query is a news-related question
-        if news.should_fetch_news(query):
-            search_terms = news.extract_search_terms(query)
-            articles = news.fetch_top_headlines(query=search_terms)
+            # Try to fetch relevant news
+            if "technology" in user_query.lower() or "tech" in user_query.lower():
+                articles = news.fetch_top_headlines(category="technology")
+            elif "sports" in user_query.lower():
+                articles = news.fetch_top_headlines(category="sports")
+            elif "health" in user_query.lower():
+                articles = news.fetch_top_headlines(category="health")
+            elif "business" in user_query.lower():
+                articles = news.fetch_top_headlines(category="business")
+            elif "science" in user_query.lower():
+                articles = news.fetch_top_headlines(category="science")
+            else:
+                # Search for specific keywords or get general headlines
+                search_terms = extract_search_terms(user_query)
+                if search_terms:
+                    articles = news.search_news(search_terms)
+                else:
+                    articles = news.fetch_top_headlines()
 
             if articles:
-                news_context = news.format_for_llm(articles)
-                # Enhance the query with news context
+                news_context = news.format_news_for_llm(articles)
                 enhanced_query = f"""
-                User's question: {query}
+                User asked: {user_query}
 
-                I know you are not a newsbot, but my human friend asked me to talk about the news.
                 Here's some current news information that might be relevant:
                 {news_context}
 
@@ -86,5 +103,6 @@ def extract_search_terms(query: str) -> str:
     # Remove common question words and keep meaningful terms
     stop_words = {"what", "is", "are", "the", "about", "tell", "me", "any", "latest", "recent", "news"}
     words = query.lower().split()
-    meaningful_words = [word for word in words if word not in stop_words]
-    return " ".join(meaningful_words)
+    meaningful_words = [word for word in words if word not in stop_words and len(word) > 2]
+
+    return " ".join(meaningful_words[:3])  # Limit to 3 most relevant terms
